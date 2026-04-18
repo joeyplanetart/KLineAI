@@ -7,6 +7,7 @@ from app.services.data_fetcher import fetch_and_save_daily_data
 from app.services.data_source_manager import data_source_manager
 from pydantic import BaseModel
 from datetime import date
+import akshare as ak
 
 router = APIRouter()
 
@@ -24,6 +25,12 @@ class StockDailySchema(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class StockInfo(BaseModel):
+    code: str
+    name: str
+    search_key: str  # 用于显示，如 "银邦股份 (300337.SZ)"
 
 
 class DataSourceInfo(BaseModel):
@@ -44,6 +51,34 @@ class DataSourcesResponse(BaseModel):
     current_source: str
 
 
+# 缓存股票列表
+_stock_list_cache: List[dict] = []
+
+
+def _get_stock_list() -> List[dict]:
+    """获取股票列表（带缓存）"""
+    global _stock_list_cache
+    if not _stock_list_cache:
+        try:
+            df = ak.stock_info_a_code_name()
+            for _, row in df.iterrows():
+                code = row['code']
+                name = row['name'].strip()
+                # 判断交易所：6开头为上海，0/3开头为深圳
+                if code.startswith('6'):
+                    search_key = f"{name} ({code}.SH)"
+                else:
+                    search_key = f"{name} ({code}.SZ)"
+                _stock_list_cache.append({
+                    "code": code,
+                    "name": name,
+                    "search_key": search_key
+                })
+        except Exception as e:
+            print(f"Failed to fetch stock list: {e}")
+    return _stock_list_cache
+
+
 @router.get("/sources", response_model=DataSourcesResponse)
 def get_data_sources():
     """
@@ -54,6 +89,29 @@ def get_data_sources():
         sources=sources,
         current_source=data_source_manager.current_source.get_name()
     )
+
+
+@router.get("/search", response_model=List[StockInfo])
+def search_stocks(q: str, limit: int = 10):
+    """
+    Search stocks by code or name.
+    Returns up to `limit` matching stocks.
+    """
+    if not q or len(q) < 1:
+        return []
+
+    q_lower = q.lower()
+    stock_list = _get_stock_list()
+
+    # 匹配：代码或名称包含搜索词
+    results = []
+    for stock in stock_list:
+        if q_lower in stock['code'].lower() or q_lower in stock['name'].lower():
+            results.append(StockInfo(**stock))
+            if len(results) >= limit:
+                break
+
+    return results
 
 
 @router.post("/fetch/{symbol}")

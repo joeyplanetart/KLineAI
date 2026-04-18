@@ -15,8 +15,8 @@ import {
   Select,
   MenuItem,
   Chip,
-  IconButton,
   Tooltip,
+  Autocomplete,
 } from '@mui/material';
 import {
   TrendingUp as TrendingUpIcon,
@@ -51,6 +51,12 @@ interface DataSource {
   description: string;
 }
 
+interface StockOption {
+  code: string;
+  name: string;
+  search_key: string;
+}
+
 export const DashboardPage: React.FC = () => {
   const [symbol, setSymbol] = useState('sh600000');
   const [stockData, setStockData] = useState<StockData[]>([]);
@@ -60,6 +66,9 @@ export const DashboardPage: React.FC = () => {
   const [dataSources, setDataSources] = useState<DataSource[]>([]);
   const [selectedSource, setSelectedSource] = useState('auto');
   const [lastFetchMessage, setLastFetchMessage] = useState<string | null>(null);
+  const [stockOptions, setStockOptions] = useState<StockOption[]>([]);
+  const [selectedStock, setSelectedStock] = useState<StockOption | null>(null);
+  const [searchInput, setSearchInput] = useState('');
 
   // 获取数据源列表
   const fetchDataSources = async () => {
@@ -71,6 +80,23 @@ export const DashboardPage: React.FC = () => {
       }
     } catch (err) {
       console.error('Failed to fetch data sources:', err);
+    }
+  };
+
+  // 搜索股票
+  const searchStocks = async (query: string) => {
+    if (!query || query.length < 1) {
+      setStockOptions([]);
+      return;
+    }
+    try {
+      const response = await fetch(`${API_URL}/market/search?q=${encodeURIComponent(query)}&limit=10`);
+      if (response.ok) {
+        const data = await response.json();
+        setStockOptions(data);
+      }
+    } catch (err) {
+      console.error('Failed to search stocks:', err);
     }
   };
 
@@ -95,6 +121,10 @@ export const DashboardPage: React.FC = () => {
 
   // 从数据源获取新数据
   const handleFetchData = async () => {
+    if (!symbol) {
+      setError('请先选择或输入股票代码');
+      return;
+    }
     setFetching(true);
     setError(null);
     setLastFetchMessage(null);
@@ -107,7 +137,6 @@ export const DashboardPage: React.FC = () => {
       setLastFetchMessage(`${result.source}: ${result.message} (${result.records_count} 条)`);
 
       if (result.records_count > 0) {
-        // 刷新数据
         fetchStockData(symbol);
       }
     } catch (err) {
@@ -115,6 +144,26 @@ export const DashboardPage: React.FC = () => {
     } finally {
       setFetching(false);
     }
+  };
+
+  // 处理股票选择
+  const handleStockSelect = (_event: any, newValue: StockOption | null) => {
+    if (newValue) {
+      setSelectedStock(newValue);
+      // 根据代码判断交易所前缀
+      const code = newValue.code;
+      if (code.startsWith('6')) {
+        setSymbol(`sh${code}`);
+      } else {
+        setSymbol(`sz${code}`);
+      }
+    }
+  };
+
+  // 处理搜索输入
+  const handleSearchChange = (event: React.SyntheticEvent, value: string) => {
+    setSearchInput(value);
+    searchStocks(value);
   };
 
   useEffect(() => {
@@ -256,13 +305,32 @@ export const DashboardPage: React.FC = () => {
           </Box>
 
           <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
+            <Autocomplete
+              size="small"
+              options={stockOptions}
+              getOptionLabel={(option) => option.search_key}
+              onInputChange={handleSearchChange}
+              onChange={handleStockSelect}
+              inputValue={searchInput}
+              value={selectedStock}
+              placeholder="搜索股票代码或名称"
+              sx={{ width: 280 }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="股票"
+                  placeholder="输入代码或名称搜索..."
+                />
+              )}
+              noOptionsText="输入股票代码或名称搜索"
+            />
             <TextField
               size="small"
-              label="股票代码"
-              placeholder="如: sh600000"
+              label="代码"
               value={symbol}
               onChange={(e) => setSymbol(e.target.value)}
-              sx={{ width: 200 }}
+              sx={{ width: 140 }}
+              disabled
             />
             <FormControl size="small" sx={{ minWidth: 120 }}>
               <InputLabel>数据源</InputLabel>
@@ -317,7 +385,7 @@ export const DashboardPage: React.FC = () => {
             <ReactECharts option={chartOption} style={{ height: 500 }} />
           ) : (
             <Alert severity="info">
-              暂无数据，请输入股票代码并点击"获取数据"从数据源拉取
+              暂无数据，请搜索并选择股票后点击"获取数据"
             </Alert>
           )}
         </CardContent>

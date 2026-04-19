@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from typing import List, Any, Optional
 from app.core.db import get_db
 from app.models.stock import StockDaily
@@ -611,6 +612,50 @@ def get_stock_list(
     # Apply pagination
     stocks = query.order_by(StockInfoModel.code.asc()).offset(offset).limit(page_size).all()
 
+    # Get latest trading data for each stock
+    symbols = [s.symbol for s in stocks]
+    latest_data = {}
+    if symbols:
+        # Get the latest trade date for each symbol
+        latest_dates_subquery = db.query(
+            StockDaily.symbol,
+            func.max(StockDaily.trade_date).label('latest_date')
+        ).filter(
+            StockDaily.symbol.in_(symbols)
+        ).group_by(StockDaily.symbol).subquery()
+
+        # Join to get full records
+        latest_records = db.query(StockDaily).join(
+            latest_dates_subquery,
+            (StockDaily.symbol == latest_dates_subquery.c.symbol) &
+            (StockDaily.trade_date == latest_dates_subquery.c.latest_date)
+        ).all()
+
+        for record in latest_records:
+            # 计算量比: 当前成交量 / 5日平均成交量
+            # 先获取最近5个交易日的成交量
+            recent_volumes = db.query(StockDaily.volume).filter(
+                StockDaily.symbol == record.symbol,
+                StockDaily.trade_date < record.trade_date
+            ).order_by(StockDaily.trade_date.desc()).limit(5).all()
+
+            if recent_volumes:
+                avg_volume = sum(v[0] for v in recent_volumes) / len(recent_volumes)
+                volume_ratio = float(record.volume) / float(avg_volume) if avg_volume > 0 else None
+            else:
+                volume_ratio = None
+
+            latest_data[record.symbol] = {
+                "trade_date": record.trade_date.isoformat() if record.trade_date else None,
+                "close": record.close,
+                "pct_change": record.pct_change,
+                "volume": record.volume,
+                "amount": record.amount,
+                "turnover_rate": record.turnover_rate,
+                "amplitude": record.amplitude,
+                "volume_ratio": round(volume_ratio, 2) if volume_ratio else None,
+            }
+
     return {
         "data": [
             {
@@ -621,7 +666,8 @@ def get_stock_list(
                 "status": s.status.value if hasattr(s, 'status') and s.status else 'active',
                 "listing_date": s.listing_date.isoformat() if s.listing_date else None,
                 "industry": s.industry if hasattr(s, 'industry') else None,
-                "market_cap": s.market_cap if hasattr(s, 'market_cap') else None
+                "market_cap": s.market_cap if hasattr(s, 'market_cap') else None,
+                "latest": latest_data.get(s.symbol, {})
             }
             for s in stocks
         ],

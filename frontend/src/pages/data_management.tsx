@@ -84,6 +84,16 @@ interface StockInfo {
   exchange: string;
   status: string;
   listing_date: string | null;
+  latest: {
+    trade_date?: string;
+    close?: number;
+    pct_change?: number;
+    volume?: number;
+    amount?: number;
+    turnover_rate?: number;
+    amplitude?: number;
+    volume_ratio?: number;
+  };
 }
 
 interface DataQualityAnomaly {
@@ -581,63 +591,16 @@ export const DataManagementPage: React.FC = () => {
       </Typography>
 
       <Tabs value={tabValue} onChange={handleTabChange} sx={{ borderBottom: 1, borderColor: 'divider' }}>
-        <Tab label="数据源状态" />
         <Tab label="股票列表" />
         <Tab label="数据质量" />
         <Tab label="批量采集" />
         <Tab label="配置管理" />
         <Tab label="任务调度" />
+        <Tab label="数据源状态" />
       </Tabs>
 
-      {/* 数据源状态 */}
-      <TabPanel value={tabValue} index={0}>
-        <Card>
-          <CardContent>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h6">数据源状态</Typography>
-              <Button startIcon={<RefreshIcon />} onClick={fetchDataSources} disabled={loading}>
-                刷新
-              </Button>
-            </Box>
-            {loading ? (
-              <CircularProgress />
-            ) : (
-              <TableContainer>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>数据源</TableCell>
-                      <TableCell>ID</TableCell>
-                      <TableCell>状态</TableCell>
-                      <TableCell>描述</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {dataSources.map((ds) => (
-                      <TableRow key={ds.id}>
-                        <TableCell>{ds.name}</TableCell>
-                        <TableCell>{ds.id}</TableCell>
-                        <TableCell>
-                          <Chip
-                            icon={ds.available ? <CloudDoneIcon /> : <CloudOffIcon />}
-                            label={ds.available ? '可用' : '不可用'}
-                            color={ds.available ? 'success' : 'default'}
-                            size="small"
-                          />
-                        </TableCell>
-                        <TableCell>{ds.description}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
-          </CardContent>
-        </Card>
-      </TabPanel>
-
       {/* 股票列表 */}
-      <TabPanel value={tabValue} index={1}>
+      <TabPanel value={tabValue} index={0}>
         <Card>
           <CardContent>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -714,8 +677,13 @@ export const DataManagementPage: React.FC = () => {
                     <TableCell>代码</TableCell>
                     <TableCell>名称</TableCell>
                     <TableCell>交易所</TableCell>
-                    <TableCell>状态</TableCell>
-                    <TableCell>上市日期</TableCell>
+                    <TableCell align="right">收盘价</TableCell>
+                    <TableCell align="right">涨跌幅</TableCell>
+                    <TableCell align="right">成交量</TableCell>
+                    <TableCell align="right">成交额</TableCell>
+                    <TableCell align="right">换手率</TableCell>
+                    <TableCell align="right">振幅</TableCell>
+                    <TableCell align="right">量比</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -724,14 +692,15 @@ export const DataManagementPage: React.FC = () => {
                       <TableCell>{stock.code}</TableCell>
                       <TableCell>{stock.name}</TableCell>
                       <TableCell>{stock.exchange}</TableCell>
-                      <TableCell>
-                        <Chip
-                          label={stock.status === 'active' ? '上市' : stock.status}
-                          color={stock.status === 'active' ? 'success' : 'default'}
-                          size="small"
-                        />
+                      <TableCell align="right">{stock.latest?.close?.toFixed(2) || '-'}</TableCell>
+                      <TableCell align="right" sx={{ color: (stock.latest?.pct_change || 0) >= 0 ? 'error.main' : 'success.main' }}>
+                        {stock.latest?.pct_change ? `${stock.latest.pct_change.toFixed(2)}%` : '-'}
                       </TableCell>
-                      <TableCell>{stock.listing_date || '-'}</TableCell>
+                      <TableCell align="right">{stock.latest?.volume ? (stock.latest.volume / 10000).toFixed(0) + '万' : '-'}</TableCell>
+                      <TableCell align="right">{stock.latest?.amount ? (stock.latest.amount / 100000000).toFixed(2) + '亿' : '-'}</TableCell>
+                      <TableCell align="right">{stock.latest?.turnover_rate != null ? stock.latest.turnover_rate.toFixed(2) + '%' : '-'}</TableCell>
+                      <TableCell align="right">{stock.latest?.amplitude != null ? stock.latest.amplitude.toFixed(2) + '%' : '-'}</TableCell>
+                      <TableCell align="right">{stock.latest?.volume_ratio != null ? stock.latest.volume_ratio.toFixed(2) : '-'}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -755,7 +724,7 @@ export const DataManagementPage: React.FC = () => {
       </TabPanel>
 
       {/* 数据质量 */}
-      <TabPanel value={tabValue} index={2}>
+      <TabPanel value={tabValue} index={1}>
         <Card sx={{ mb: 3 }}>
           <CardContent>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -846,7 +815,7 @@ export const DataManagementPage: React.FC = () => {
       </TabPanel>
 
       {/* 批量采集 */}
-      <TabPanel value={tabValue} index={3}>
+      <TabPanel value={tabValue} index={2}>
         <Card>
           <CardContent>
             <Typography variant="h6" gutterBottom>批量采集股票数据</Typography>
@@ -1009,7 +978,7 @@ export const DataManagementPage: React.FC = () => {
       </TabPanel>
 
       {/* 配置管理 */}
-      <TabPanel value={tabValue} index={4}>
+      <TabPanel value={tabValue} index={3}>
         <Card>
           <CardContent>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -1071,7 +1040,7 @@ export const DataManagementPage: React.FC = () => {
       </TabPanel>
 
       {/* 任务调度 */}
-      <TabPanel value={tabValue} index={5}>
+      <TabPanel value={tabValue} index={4}>
         <Card sx={{ mb: 3 }}>
           <CardContent>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -1157,6 +1126,53 @@ export const DataManagementPage: React.FC = () => {
                 </TableBody>
               </Table>
             </TableContainer>
+          </CardContent>
+        </Card>
+      </TabPanel>
+
+      {/* 数据源状态 */}
+      <TabPanel value={tabValue} index={5}>
+        <Card>
+          <CardContent>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6">数据源状态</Typography>
+              <Button startIcon={<RefreshIcon />} onClick={fetchDataSources} disabled={loading}>
+                刷新
+              </Button>
+            </Box>
+            {loading ? (
+              <CircularProgress />
+            ) : (
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>数据源</TableCell>
+                      <TableCell>ID</TableCell>
+                      <TableCell>状态</TableCell>
+                      <TableCell>描述</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {dataSources.map((ds) => (
+                      <TableRow key={ds.id}>
+                        <TableCell>{ds.name}</TableCell>
+                        <TableCell>{ds.id}</TableCell>
+                        <TableCell>
+                          <Chip
+                            icon={ds.available ? <CloudDoneIcon /> : <CloudOffIcon />}
+                            label={ds.available ? '可用' : '不可用'}
+                            color={ds.available ? 'success' : 'default'}
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell>{ds.description}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
           </CardContent>
         </Card>
       </TabPanel>

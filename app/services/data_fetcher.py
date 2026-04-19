@@ -107,8 +107,9 @@ def fetch_and_save_daily_data(
                 amount=row.get("amount", 0),
                 change_amount=row.get("change_amount", 0.0),
                 pct_change=row.get("pct_change", 0.0),
-                turnover_rate=row.get("turnover_rate", 0.0),
-                amplitude=row.get("amplitude", 0.0),
+                turnover_rate=row.get("turnover_rate", 0.0) if row.get("turnover_rate") else 0.0,
+                # 计算振幅: (最高价-最低价)/收盘价 * 100
+                amplitude=row.get("amplitude", 0.0) if row.get("amplitude") else (float(row.get("high", 0)) - float(row.get("low", 0))) / float(row.get("close", 1)) * 100 if row.get("close") else 0.0,
                 pe=0.0,
                 pb=0.0,
                 is_validated=validate,

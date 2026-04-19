@@ -44,7 +44,8 @@
       "Bash(npm run build)",
       "Bash(/Users/joey/KLineAI/venv/bin/pip install baostock)",
       "Bash(venv/bin/python:*)",
-      "Bash(npx tsc --noEmit --skipLibCheck)"
+      "Bash(npx tsc --noEmit --skipLibCheck)",
+      "mcp__MiniMax__understand_image"
     ]
   }
 }

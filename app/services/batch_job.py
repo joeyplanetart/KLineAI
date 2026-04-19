@@ -161,9 +161,21 @@ class BatchJobService:
     @classmethod
     def get_active_jobs(cls) -> List[Dict]:
         """获取所有活跃任务（运行中或待处理）"""
-        # 实际生产中应该用 Redis SCAN，这里简化处理
-        # 遍历所有可能的 job_id（实际应该存储一个 job_id 列表）
-        return []
+        try:
+            keys = cache_manager.keys("batch:job:*")
+            active_jobs = []
+            for key in keys:
+                # 提取 job_id
+                parts = key.split(":")
+                if len(parts) >= 3:
+                    job_id = parts[2]
+                    job_data = cache_manager.get(f"batch:job:{job_id}")
+                    if job_data and job_data.get("status") in [cls.STATUS_PENDING, cls.STATUS_RUNNING]:
+                        active_jobs.append(job_data)
+            return active_jobs
+        except Exception as e:
+            print(f"Error getting active jobs: {e}")
+            return []
 
 
 # 全局单例

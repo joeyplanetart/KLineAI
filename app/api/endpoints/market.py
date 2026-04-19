@@ -389,6 +389,22 @@ def get_batch_job_status(job_id: str):
     }
 
 
+@router.get("/batch-all/active")
+def get_active_batch_jobs():
+    """
+    Get all active (running or pending) batch jobs.
+    This endpoint helps frontend resume progress tracking after page refresh.
+    """
+    from app.services.batch_job import batch_job_service
+
+    active_jobs = batch_job_service.get_active_jobs()
+
+    return {
+        "active_jobs": active_jobs,
+        "count": len(active_jobs)
+    }
+
+
 @router.get("/realtime/{symbol}", response_model=RealtimeQuote)
 def get_realtime_quote(
     symbol: str,

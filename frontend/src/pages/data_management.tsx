@@ -147,11 +147,11 @@ export const DataManagementPage: React.FC = () => {
     // Default: 1 month ago
     const d = new Date();
     d.setMonth(d.getMonth() - 1);
-    return d.toISOString().slice(0, 10).replace(/-/g, '');
+    return d.toISOString().slice(0, 10);
   });
   const [batchEndDate, setBatchEndDate] = useState(() => {
     // Default: today
-    return new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    return new Date().toISOString().slice(0, 10);
   });
   const [batchResult, setBatchResult] = useState<any>(null);
   const [batchLoading, setBatchLoading] = useState(false);
@@ -262,8 +262,8 @@ export const DataManagementPage: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           symbols,
-          start_date: batchStartDate,
-          end_date: batchEndDate,
+          start_date: batchStartDate.replace(/-/g, ''),
+          end_date: batchEndDate.replace(/-/g, ''),
           source: 'baostock'
         })
       });
@@ -464,6 +464,34 @@ export const DataManagementPage: React.FC = () => {
     }
   };
 
+  // Fetch active batch jobs on page load to resume progress
+  const fetchActiveBatchJobs = async () => {
+    try {
+      const response = await fetch(`${API_URL}/market/batch-all/active`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.active_jobs && data.active_jobs.length > 0) {
+          // Resume the most recent active job
+          const job = data.active_jobs[0];
+          setBatchJobId(job.job_id);
+          setBatchJobStatus({
+            status: job.status,
+            total: job.total,
+            current: job.current,
+            success: job.success,
+            failed: job.failed,
+            progress: job.total > 0 ? Math.round(job.current / job.total * 100) : 0
+          });
+          setBatchLoading(job.status === 'running' || job.status === 'pending');
+          // Start polling
+          pollBatchJobStatus(job.job_id);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch active batch jobs:', err);
+    }
+  };
+
   useEffect(() => {
     fetchDataSources();
     fetchStockList();
@@ -471,6 +499,7 @@ export const DataManagementPage: React.FC = () => {
     fetchConfigs();
     fetchTasks();
     fetchRecentExecutions();
+    fetchActiveBatchJobs();
   }, []);
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
@@ -757,12 +786,12 @@ export const DataManagementPage: React.FC = () => {
             <Typography variant="h6" gutterBottom>批量采集股票数据</Typography>
 
             {/* 采集全部A股区域 */}
-            <Card variant="outlined" sx={{ mb: 3, bgcolor: 'grey.50' }}>
+            <Card variant="outlined" sx={{ mb: 3, bgcolor: 'grey.100' }}>
               <CardContent>
-                <Typography variant="subtitle1" gutterBottom>
+                <Typography variant="subtitle1" gutterBottom sx={{ color: '#333' }}>
                   一键采集全部A股
                 </Typography>
-                <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+                <Typography variant="body2" sx={{ mb: 2, color: '#555' }}>
                   自动从数据库获取全部5500+只A股，分批采集并显示进度
                 </Typography>
 
@@ -819,19 +848,26 @@ export const DataManagementPage: React.FC = () => {
                 onChange={(e) => setBatchSymbols(e.target.value)}
                 helperText="多个代码用逗号分隔，如：sh600000, sz000001"
                 size="small"
+                sx={{ bgcolor: 'background.paper' }}
               />
               <Stack direction="row" spacing={2}>
                 <TextField
                   label="开始日期"
+                  type="date"
                   value={batchStartDate}
                   onChange={(e) => setBatchStartDate(e.target.value)}
                   size="small"
+                  InputLabelProps={{ shrink: true }}
+                  sx={{ bgcolor: 'background.paper' }}
                 />
                 <TextField
                   label="结束日期"
+                  type="date"
                   value={batchEndDate}
                   onChange={(e) => setBatchEndDate(e.target.value)}
                   size="small"
+                  InputLabelProps={{ shrink: true }}
+                  sx={{ bgcolor: 'background.paper' }}
                 />
               </Stack>
               <Stack direction="row" spacing={2}>
@@ -889,7 +925,7 @@ export const DataManagementPage: React.FC = () => {
                 {batchResult.message}
               </Alert>
             )}
-            <Typography variant="body2" color="textSecondary" sx={{ mt: 2 }}>
+            <Typography variant="body2" sx={{ mt: 2, color: '#666' }}>
               <StorageIcon sx={{ fontSize: 16, verticalAlign: 'middle', mr: 0.5 }} />
               批量采集会为每个股票创建分布式锁，防止重复采集。
             </Typography>

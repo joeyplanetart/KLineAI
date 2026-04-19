@@ -58,7 +58,7 @@ interface StockOption {
 }
 
 export const DashboardPage: React.FC = () => {
-  const [symbol, setSymbol] = useState('sh600000');
+  const [symbol, setSymbol] = useState('');
   const [stockData, setStockData] = useState<StockData[]>([]);
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);

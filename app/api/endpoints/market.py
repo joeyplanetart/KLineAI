@@ -405,6 +405,17 @@ def get_active_batch_jobs():
     }
 
 
+@router.delete("/batch-all/cache")
+def clear_batch_job_cache():
+    """
+    清除所有批量采集任务的缓存（用于重置任务状态）
+    """
+    from app.services.batch_job import batch_job_service
+
+    cleared_count = batch_job_service.clear_all_jobs()
+    return {"message": f"已清除 {cleared_count} 个批量任务缓存", "cleared_count": cleared_count}
+
+
 @router.get("/realtime/{symbol}", response_model=RealtimeQuote)
 def get_realtime_quote(
     symbol: str,
@@ -751,8 +762,7 @@ def get_stock_data(
 
     data = query.order_by(StockDaily.trade_date.desc()).offset(offset).limit(page_size).all()
 
-    if not data and page == 1:
-        raise HTTPException(status_code=404, detail="Data not found")
+    # Return empty result if no data (don't raise 404, just return empty data array)
 
     return {
         "symbol": symbol,
@@ -779,3 +789,31 @@ def get_stock_data(
             "total_pages": (total + page_size - 1) // page_size if total > 0 else 0
         }
     }
+
+
+@router.delete("/data/all")
+def clear_all_stock_data(db: Session = Depends(get_db)):
+    """
+    清空所有股票数据（谨慎使用）
+    """
+    try:
+        deleted = db.query(StockDaily).delete()
+        db.commit()
+        return {"message": f"已清空 {deleted} 条股票数据", "deleted_count": deleted}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"清空数据失败: {str(e)}")
+
+
+@router.delete("/data/{symbol}")
+def clear_stock_data(symbol: str, db: Session = Depends(get_db)):
+    """
+    清空指定股票的所有数据
+    """
+    try:
+        deleted = db.query(StockDaily).filter(StockDaily.symbol == symbol).delete()
+        db.commit()
+        return {"message": f"已清空 {symbol} 的 {deleted} 条数据", "deleted_count": deleted}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"清空数据失败: {str(e)}")

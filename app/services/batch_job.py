@@ -177,6 +177,19 @@ class BatchJobService:
             print(f"Error getting active jobs: {e}")
             return []
 
+    @classmethod
+    def clear_all_jobs(cls) -> int:
+        """清除所有批量任务缓存，返回清除的任务数量"""
+        try:
+            keys = cache_manager.keys("batch:job:*")
+            count = len(keys)
+            if count > 0:
+                cache_manager.flush_pattern("batch:job:*")
+            return count
+        except Exception as e:
+            print(f"Error clearing batch jobs: {e}")
+            return 0
+
 
 # 全局单例
 batch_job_service = BatchJobService()

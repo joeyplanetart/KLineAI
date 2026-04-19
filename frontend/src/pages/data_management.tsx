@@ -50,6 +50,7 @@ import {
   Save as SaveIcon,
   PlayArrow as PlayArrowIcon,
   Search as SearchIcon,
+  Delete as DeleteIcon,
 } from '@mui/icons-material';
 
 const API_URL = 'http://localhost:8000/api/v1';
@@ -133,6 +134,8 @@ export const DataManagementPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
+  const [clearing, setClearing] = useState(false);
+  const [clearMessage, setClearMessage] = useState<string | null>(null);
   const [stockList, setStockList] = useState<StockInfo[]>([]);
   const [stockPagination, setStockPagination] = useState<PaginationInfo>({ page: 1, page_size: 50, total: 0, total_pages: 0 });
   const [stockSearch, setStockSearch] = useState('');
@@ -159,6 +162,7 @@ export const DataManagementPage: React.FC = () => {
   // Batch job tracking states
   const [batchJobId, setBatchJobId] = useState<string | null>(null);
   const [batchJobStatus, setBatchJobStatus] = useState<any>(null);
+  const [clearingCache, setClearingCache] = useState(false);
 
   // Config states
   const [configs, setConfigs] = useState<ConfigItem[]>([]);
@@ -206,6 +210,28 @@ export const DataManagementPage: React.FC = () => {
       setSyncMessage('同步失败: ' + (err instanceof Error ? err.message : 'Unknown error'));
     } finally {
       setSyncing(false);
+    }
+  };
+
+  // Clear all stock data
+  const handleClearAllStockData = async () => {
+    if (!window.confirm('确定要清空所有股票数据吗？此操作不可恢复！')) {
+      return;
+    }
+    setClearing(true);
+    setClearMessage(null);
+    try {
+      const response = await fetch(`${API_URL}/market/data/all`, { method: 'DELETE' });
+      const result = await response.json();
+      if (response.ok) {
+        setClearMessage(`已清空 ${result.deleted_count} 条股票数据`);
+      } else {
+        setClearMessage('清空失败: ' + (result.detail || 'Unknown error'));
+      }
+    } catch (err) {
+      setClearMessage('清空失败: ' + (err instanceof Error ? err.message : 'Unknown error'));
+    } finally {
+      setClearing(false);
     }
   };
 
@@ -367,6 +393,29 @@ export const DataManagementPage: React.FC = () => {
     }, 2000); // Poll every 2 seconds
   };
 
+  // Clear batch job cache
+  const handleClearBatchCache = async () => {
+    if (!window.confirm('确定要清除所有批量采集任务缓存吗？')) {
+      return;
+    }
+    setClearingCache(true);
+    try {
+      const response = await fetch(`${API_URL}/market/batch-all/cache`, { method: 'DELETE' });
+      const result = await response.json();
+      if (response.ok) {
+        setBatchResult({ message: result.message, success: 0, failed: 0 });
+        setBatchJobStatus(null);
+        setBatchJobId(null);
+      } else {
+        setBatchResult({ message: '清除缓存失败: ' + (result.detail || 'Unknown error'), success: 0, failed: 0 });
+      }
+    } catch (err) {
+      setBatchResult({ message: '清除缓存失败: ' + (err instanceof Error ? err.message : 'Unknown error'), success: 0, failed: 0 });
+    } finally {
+      setClearingCache(false);
+    }
+  };
+
   // Config functions
   const fetchConfigs = async () => {
     try {
@@ -489,6 +538,7 @@ export const DataManagementPage: React.FC = () => {
       }
     } catch (err) {
       console.error('Failed to fetch active batch jobs:', err);
+      setBatchLoading(false);
     }
   };
 
@@ -592,18 +642,34 @@ export const DataManagementPage: React.FC = () => {
           <CardContent>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
               <Typography variant="h6">股票列表</Typography>
-              <Button
-                startIcon={syncing ? <CircularProgress size={20} /> : <SyncIcon />}
-                onClick={handleSyncStockList}
-                disabled={syncing}
-                variant="contained"
-              >
-                {syncing ? '同步中...' : '同步股票列表'}
-              </Button>
+              <Stack direction="row" spacing={1}>
+                <Button
+                  startIcon={clearing ? <CircularProgress size={20} /> : <DeleteIcon />}
+                  onClick={handleClearAllStockData}
+                  disabled={clearing}
+                  variant="outlined"
+                  color="error"
+                >
+                  {clearing ? '清空中...' : '清空股票数据'}
+                </Button>
+                <Button
+                  startIcon={syncing ? <CircularProgress size={20} /> : <SyncIcon />}
+                  onClick={handleSyncStockList}
+                  disabled={syncing}
+                  variant="contained"
+                >
+                  {syncing ? '同步中...' : '同步股票列表'}
+                </Button>
+              </Stack>
             </Box>
             {syncMessage && (
               <Alert severity="info" sx={{ mb: 2 }}>
                 {syncMessage}
+              </Alert>
+            )}
+            {clearMessage && (
+              <Alert severity={clearMessage.includes('失败') ? 'error' : 'success'} sx={{ mb: 2 }}>
+                {clearMessage}
               </Alert>
             )}
             {/* Search and Filter */}
@@ -831,6 +897,15 @@ export const DataManagementPage: React.FC = () => {
                     disabled={batchLoading}
                   >
                     {batchLoading && batchJobStatus?.status === 'running' ? '采集中...' : '采集全部A股'}
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    color="warning"
+                    startIcon={clearingCache ? <CircularProgress size={20} /> : <DeleteIcon />}
+                    onClick={handleClearBatchCache}
+                    disabled={clearingCache}
+                  >
+                    {clearingCache ? '清除中...' : '清除采集缓存'}
                   </Button>
                 </Stack>
               </CardContent>

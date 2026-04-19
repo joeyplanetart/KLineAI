@@ -53,8 +53,8 @@ class FetchResponse(BaseModel):
 
 class BatchFetchRequest(BaseModel):
     symbols: List[str]
-    start_date: str
-    end_date: str
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
     source: str = "baostock"
     adjust: str = "qfq"  # qfq=前复权, hfq=后复权, 3=不复权
 

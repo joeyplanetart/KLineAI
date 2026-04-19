@@ -140,9 +140,17 @@ export const DataManagementPage: React.FC = () => {
   const [qualitySummary, setQualitySummary] = useState<any>(null);
 
   // Batch fetch states
-  const [batchSymbols, setBatchSymbols] = useState('sh600000, sz000001');
-  const [batchStartDate, setBatchStartDate] = useState('20240101');
-  const [batchEndDate, setBatchEndDate] = useState('20240419');
+  const [batchSymbols, setBatchSymbols] = useState('');
+  const [batchStartDate, setBatchStartDate] = useState(() => {
+    // Default: 1 month ago
+    const d = new Date();
+    d.setMonth(d.getMonth() - 1);
+    return d.toISOString().slice(0, 10).replace(/-/g, '');
+  });
+  const [batchEndDate, setBatchEndDate] = useState(() => {
+    // Default: today
+    return new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  });
   const [batchResult, setBatchResult] = useState<any>(null);
   const [batchLoading, setBatchLoading] = useState(false);
 
@@ -655,8 +663,7 @@ export const DataManagementPage: React.FC = () => {
                 label="股票代码列表"
                 value={batchSymbols}
                 onChange={(e) => setBatchSymbols(e.target.value)}
-                placeholder="sh600000, sz000001, sz000002"
-                helperText="用逗号分隔多个股票代码"
+                helperText="用逗号分隔多个股票代码，如：sh600000, sz000001"
                 size="small"
               />
               <Stack direction="row" spacing={2}>
@@ -664,25 +671,69 @@ export const DataManagementPage: React.FC = () => {
                   label="开始日期"
                   value={batchStartDate}
                   onChange={(e) => setBatchStartDate(e.target.value)}
-                  placeholder="YYYYMMDD"
                   size="small"
                 />
                 <TextField
                   label="结束日期"
                   value={batchEndDate}
                   onChange={(e) => setBatchEndDate(e.target.value)}
-                  placeholder="YYYYMMDD"
                   size="small"
                 />
               </Stack>
-              <Button
-                variant="contained"
-                startIcon={batchLoading ? <CircularProgress size={20} /> : <PlayCircleIcon />}
-                onClick={handleBatchFetch}
-                disabled={batchLoading}
-              >
-                {batchLoading ? '采集中...' : '开始采集'}
-              </Button>
+              <Stack direction="row" spacing={2}>
+                <Button
+                  variant="contained"
+                  startIcon={batchLoading ? <CircularProgress size={20} /> : <PlayCircleIcon />}
+                  onClick={handleBatchFetch}
+                  disabled={batchLoading || !batchSymbols.trim()}
+                >
+                  {batchLoading ? '采集中...' : '开始采集'}
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  startIcon={batchLoading ? <CircularProgress size={20} /> : <SyncIcon />}
+                  onClick={async () => {
+                    if (!batchSymbols.trim()) {
+                      setBatchResult({ message: '请先输入股票代码', success: 0, failed: 0 });
+                      return;
+                    }
+                    setBatchLoading(true);
+                    try {
+                      // Calculate last trading day
+                      const today = new Date();
+                      let lastTradingDay = new Date(today);
+                      for (let i = 0; i < 7; i++) {
+                        lastTradingDay = new Date(today);
+                        lastTradingDay.setDate(today.getDate() - i);
+                        if (lastTradingDay.getDay() !== 0 && lastTradingDay.getDay() !== 6) break;
+                      }
+                      const tradingDay = lastTradingDay.toISOString().slice(0, 10).replace(/-/g, '');
+
+                      const symbols = batchSymbols.split(',').map(s => s.trim()).filter(s => s);
+                      const response = await fetch(`${API_URL}/market/batch`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          symbols,
+                          start_date: tradingDay,
+                          end_date: tradingDay,
+                          source: 'baostock'
+                        })
+                      });
+                      const result = await response.json();
+                      setBatchResult({ ...result, message: `采集当天(${tradingDay}): ${result.success}/${result.total} 成功` });
+                    } catch (err) {
+                      setBatchResult({ message: '采集失败: ' + (err instanceof Error ? err.message : 'Unknown error'), success: 0, failed: 0 });
+                    } finally {
+                      setBatchLoading(false);
+                    }
+                  }}
+                  disabled={batchLoading}
+                >
+                  采集当天
+                </Button>
+              </Stack>
             </Stack>
             {batchResult && (
               <Alert severity={batchResult.failed > 0 ? 'warning' : 'success'} sx={{ mt: 2 }}>

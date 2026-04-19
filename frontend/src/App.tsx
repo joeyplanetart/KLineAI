@@ -8,6 +8,7 @@ import { DashboardPage } from './pages/dashboard';
 import { StrategyPage } from './pages/strategy';
 import { LoginPage } from './pages/login';
 import { RegisterPage } from './pages/register';
+import { AdminPage } from './pages/admin';
 import { NotFound } from './components/NotFound';
 
 const App: React.FC = () => {
@@ -35,6 +36,17 @@ const App: React.FC = () => {
                 <ProtectedRoute>
                   <Layout>
                     <StrategyPage />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute adminOnly>
+                  <Layout>
+                    <AdminPage />
                   </Layout>
                 </ProtectedRoute>
               }

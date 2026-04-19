@@ -28,7 +28,8 @@
       "Bash(venv/bin/pip install python-jose[cryptography] passlib[bcrypt] \"pydantic[email]\" -q)",
       "Bash(venv/bin/pip:*)",
       "Bash(venv/bin/python3:*)",
-      "Bash(pkill:*)"
+      "Bash(pkill:*)",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwiZXhwIjoxNzc2NTY1MjM1LCJ0eXBlIjoiYWNjZXNzIn0.d-oHvgQuZB4VYlQHFgYusZS7n5qtGV1hKmpGak3SwI8\")"
     ]
   }
 }

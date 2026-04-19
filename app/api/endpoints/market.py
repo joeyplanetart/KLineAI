@@ -229,9 +229,10 @@ def batch_fetch_stocks(
 ) -> BatchFetchResponse:
     """
     Batch fetch data for multiple symbols.
+    If symbols is empty, fetches all active A-share stocks from the database.
 
     Request body:
-    - symbols: List of stock symbols (e.g., ["sh600000", "sz000001"])
+    - symbols: List of stock symbols (e.g., ["sh600000", "sz000001"]). If empty, fetches all A-share stocks.
     - start_date: Start date in YYYYMMDD format (optional, defaults to most recent trading day)
     - end_date: End date in YYYYMMDD format (optional, defaults to most recent trading day)
     - source: Data source to use (default: baostock)
@@ -239,29 +240,66 @@ def batch_fetch_stocks(
     """
     collector = BatchCollector()
 
-    # Limit batch size to prevent overload
-    if len(request.symbols) > 100:
+    # If symbols is empty, fetch all active A-share stocks from database
+    symbols = request.symbols
+    is_fetch_all = False
+    if not symbols:
+        stocks = db.query(StockInfoModel).filter(
+            StockInfoModel.status == StockStatus.ACTIVE
+        ).all()
+        symbols = [s.symbol for s in stocks]
+        is_fetch_all = True
+
+    # Limit batch size to prevent overload (only for explicit symbol lists)
+    if len(symbols) > 100 and not is_fetch_all:
         raise HTTPException(status_code=400, detail="Batch size exceeds 100 symbols")
 
     # Default dates to most recent trading day if not provided
     end_date = request.end_date or _get_last_trading_day()
     start_date = request.start_date or end_date
 
-    result = collector.batch_fetch(
-        db,
-        request.symbols,
-        start_date,
-        end_date,
-        request.source,
-        adjust=request.adjust
-    )
+    # If fetching all stocks, process in batches of 100
+    total_success = 0
+    total_failed = 0
+    total_count = len(symbols)
 
-    return BatchFetchResponse(
-        message=f"Batch fetch completed: {result['success']}/{result['total']} successful",
-        total=result["total"],
-        success=result["success"],
-        failed=result["failed"]
-    )
+    if is_fetch_all and len(symbols) > 100:
+        # Process in batches
+        for i in range(0, len(symbols), 100):
+            batch_symbols = symbols[i:i + 100]
+            result = collector.batch_fetch(
+                db,
+                batch_symbols,
+                start_date,
+                end_date,
+                request.source,
+                adjust=request.adjust
+            )
+            total_success += result["success"]
+            total_failed += result["failed"]
+
+        return BatchFetchResponse(
+            message=f"采集全部A股完成: {total_success}/{total_count} 成功",
+            total=total_count,
+            success=total_success,
+            failed=total_failed
+        )
+    else:
+        result = collector.batch_fetch(
+            db,
+            symbols,
+            start_date,
+            end_date,
+            request.source,
+            adjust=request.adjust
+        )
+
+        return BatchFetchResponse(
+            message=f"Batch fetch completed: {result['success']}/{result['total']} successful",
+            total=result["total"],
+            success=result["success"],
+            failed=result["failed"]
+        )
 
 
 @router.get("/realtime/{symbol}", response_model=RealtimeQuote)

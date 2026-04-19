@@ -262,7 +262,13 @@ export const DataManagementPage: React.FC = () => {
         })
       });
       const result = await response.json();
-      setBatchResult(result);
+      if (!response.ok) {
+        throw new Error(result.detail || '批量获取失败');
+      }
+      const msg = symbols.length === 0
+        ? `采集全部A股 (${result.success}/${result.total} 成功)`
+        : `Batch fetch completed: ${result.success}/${result.total} successful`;
+      setBatchResult({ ...result, message: msg });
     } catch (err) {
       setBatchResult({ message: '批量获取失败: ' + (err instanceof Error ? err.message : 'Unknown error'), success: 0, failed: 0 });
     } finally {
@@ -663,7 +669,7 @@ export const DataManagementPage: React.FC = () => {
                 label="股票代码列表"
                 value={batchSymbols}
                 onChange={(e) => setBatchSymbols(e.target.value)}
-                helperText="用逗号分隔多个股票代码，如：sh600000, sz000001"
+                helperText="留空表示采集全部A股；多个代码用逗号分隔，如：sh600000, sz000001"
                 size="small"
               />
               <Stack direction="row" spacing={2}>
@@ -685,7 +691,7 @@ export const DataManagementPage: React.FC = () => {
                   variant="contained"
                   startIcon={batchLoading ? <CircularProgress size={20} /> : <PlayCircleIcon />}
                   onClick={handleBatchFetch}
-                  disabled={batchLoading || !batchSymbols.trim()}
+                  disabled={batchLoading}
                 >
                   {batchLoading ? '采集中...' : '开始采集'}
                 </Button>
@@ -694,10 +700,6 @@ export const DataManagementPage: React.FC = () => {
                   color="primary"
                   startIcon={batchLoading ? <CircularProgress size={20} /> : <SyncIcon />}
                   onClick={async () => {
-                    if (!batchSymbols.trim()) {
-                      setBatchResult({ message: '请先输入股票代码', success: 0, failed: 0 });
-                      return;
-                    }
                     setBatchLoading(true);
                     try {
                       // Calculate last trading day

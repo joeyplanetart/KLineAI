@@ -181,23 +181,27 @@ class BaoStockDataSource(BaseDataSource):
             self._ensure_login()
 
             # 转换 symbol 格式
-            if symbol.startswith('sh') or symbol.startswith('sz'):
-                bs_symbol = symbol  # 已经是正确格式
-            else:
-                # 假设 6 位代码是上海，其他是深圳
-                if len(symbol) == 6:
-                    if symbol.startswith('6'):
-                        bs_symbol = f'sh.{symbol}'
-                    else:
-                        bs_symbol = f'sz.{symbol}'
+            # BaoStock 期望格式: 'sh.600000' 或 'sz.000001'
+            if symbol.startswith('sh'):
+                bs_symbol = f'sh.{symbol[2:]}'
+            elif symbol.startswith('sz'):
+                bs_symbol = f'sz.{symbol[2:]}'
+            elif len(symbol) == 6:
+                # 纯数字代码，假设 6 开头是上海，其他是深圳
+                if symbol.startswith('6'):
+                    bs_symbol = f'sh.{symbol}'
                 else:
                     bs_symbol = f'sz.{symbol}'
+            else:
+                bs_symbol = symbol  # 其他格式保持原样
 
             # 转换日期格式 (YYYYMMDD -> YYYY-MM-DD)
             if len(start_date) == 8:
                 start_date = f'{start_date[:4]}-{start_date[4:6]}-{start_date[6:8]}'
             if len(end_date) == 8:
                 end_date = f'{end_date[:4]}-{end_date[4:6]}-{end_date[6:8]}'
+
+            print(f"[BaoStock] Querying {bs_symbol} from {start_date} to {end_date}")
 
             rs = bs.query_history_k_data_plus(
                 bs_symbol,
@@ -208,12 +212,14 @@ class BaoStockDataSource(BaseDataSource):
             )
 
             if rs.error_code != '0':
+                print(f"[BaoStock] Query error: {rs.error_msg}")
                 raise ConnectionError(f"BaoStock query failed: {rs.error_msg}")
 
             data_list = []
             while rs.next():
                 data_list.append(rs.get_row_data())
 
+            print(f"[BaoStock] Got {len(data_list)} rows for {bs_symbol}")
             if not data_list:
                 return pd.DataFrame()
 

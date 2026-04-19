@@ -82,18 +82,21 @@ class BatchCollector:
         fail_count = 0
 
         for i, symbol in enumerate(symbols):
-            # Acquire distributed lock to prevent duplicate fetching
-            lock = self.cache.acquire_fetch_lock(symbol, timeout=60)
-            if not lock:
-                print(f"Skipping {symbol}: already being fetched by another worker")
-                continue
+            # Try to acquire distributed lock to prevent duplicate fetching
+            lock = None
+            try:
+                lock = self.cache.acquire_fetch_lock(symbol, timeout=60)
+            except Exception as e:
+                print(f"Warning: Could not acquire lock for {symbol}, proceeding without lock: {e}")
 
             try:
                 # Fetch data with retry
+                last_result = None
                 for attempt in range(self.max_retries):
                     result = fetch_and_save_daily_data(
                         db, symbol, start_date, end_date, source, validate=True
                     )
+                    last_result = result
                     if result["success"]:
                         results[symbol] = result
                         success_count += 1
@@ -101,15 +104,22 @@ class BatchCollector:
                     elif attempt < self.max_retries - 1:
                         time.sleep(self.rate_limit_delay * (attempt + 1))  # Exponential backoff
                 else:
+                    # All retries exhausted, use the last result message
+                    fail_msg = last_result.get("message", f"Failed after {self.max_retries} attempts")
+                    print(f"Failed to fetch {symbol}: {fail_msg}")
                     results[symbol] = {
                         "success": False,
-                        "message": f"Failed after {self.max_retries} attempts",
+                        "message": fail_msg,
                         "records_count": 0
                     }
                     fail_count += 1
 
             finally:
-                self.cache.release_lock(lock)
+                if lock:
+                    try:
+                        self.cache.release_lock(lock)
+                    except Exception as e:
+                        print(f"Warning: Could not release lock for {symbol}: {e}")
 
             # Rate limiting
             time.sleep(self.rate_limit_delay)

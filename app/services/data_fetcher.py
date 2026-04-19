@@ -46,7 +46,7 @@ def fetch_and_save_daily_data(
         df = data_source_manager.fetch_daily(symbol, start_date, end_date)
 
         if df is None or df.empty:
-            result["message"] = f"No data fetched for {symbol}"
+            result["message"] = f"No data fetched for {symbol} ({start_date} to {end_date})"
             return result
 
         # 数据清洗和转换

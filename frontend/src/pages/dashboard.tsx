@@ -129,8 +129,15 @@ export const DashboardPage: React.FC = () => {
     setError(null);
     setLastFetchMessage(null);
     try {
+      // Calculate date range: from 3 months ago to today (YYYYMMDD format)
+      const today = new Date();
+      const threeMonthsAgo = new Date();
+      threeMonthsAgo.setMonth(today.getMonth() - 3);
+      const startDate = threeMonthsAgo.toISOString().slice(0, 10).replace(/-/g, '');
+      const endDate = today.toISOString().slice(0, 10).replace(/-/g, '');
+
       const response = await fetch(
-        `${API_URL}/market/fetch/${symbol}?start_date=20240101&end_date=20240418&source=${selectedSource}`,
+        `${API_URL}/market/fetch/${symbol}?start_date=${startDate}&end_date=${endDate}&source=${selectedSource}`,
         { method: 'POST' }
       );
       const result = await response.json();

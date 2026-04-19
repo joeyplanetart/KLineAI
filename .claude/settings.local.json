@@ -34,7 +34,13 @@
       "WebFetch(domain:platform.minimaxi.com)",
       "Bash(__NEW_LINE_c580eaf81951b447__ echo -e \"\\\\n\\\\n2. /v1/chat/completions:\")",
       "Bash(__NEW_LINE_d89fd35312aea5c3__ echo -e \"\\\\n\\\\n3. /anthropic/messages:\")",
-      "Bash(/Users/joey/KLineAI/venv/bin/pip show python-dotenv)"
+      "Bash(/Users/joey/KLineAI/venv/bin/pip show python-dotenv)",
+      "Bash(psql:*)",
+      "Bash(pip3:*)",
+      "Bash(conda env list)",
+      "Bash(PGPASSWORD=klineai_password psql:*)",
+      "Bash(/Users/joey/KLineAI/venv/bin/python -c \"\nfrom app.core.db import engine\nfrom app.models.stock import StockDaily\nfrom app.models.user import User\nfrom app.models.model_usage import ModelUsage\n\n# Create all tables\nStockDaily.__table__.create\\(engine, checkfirst=True\\)\nprint\\(''StockDaily table created''\\)\n\")",
+      "Bash(/Users/joey/KLineAI/venv/bin/python:*)"
     ]
   }
 }

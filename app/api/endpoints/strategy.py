@@ -6,6 +6,7 @@ from datetime import datetime
 import json
 from app.services.llm_service import llm_service
 from app.services.backtest import backtest_engine
+from app.services.builtin_strategies import get_all_builtin_strategies, get_builtin_strategy
 from app.core.db import get_db
 from app.core.security import get_current_user, get_optional_user, get_current_admin
 from app.models.stock import StockDaily
@@ -108,6 +109,65 @@ def generate_strategy(
         status=status,
         created_at=created_at
     )
+
+
+@router.get("/builtin")
+def list_builtin_strategies():
+    """
+    List all built-in strategies for quick selection.
+    """
+    return {"strategies": get_all_builtin_strategies()}
+
+
+class ApplyBuiltinRequest(BaseModel):
+    strategy_id: str
+    name: str
+    description: Optional[str] = None
+
+
+@router.post("/builtin/apply", response_model=StrategyResponse)
+def apply_builtin_strategy(
+    request: ApplyBuiltinRequest,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_user)
+):
+    """
+    Apply a built-in strategy by copying it to user's strategies.
+    """
+    builtin = get_builtin_strategy(request.strategy_id)
+    if not builtin:
+        raise HTTPException(status_code=404, detail="Built-in strategy not found")
+
+    strategy = Strategy(
+        name=request.name,
+        description=request.description or builtin["description"],
+        strategy_code=builtin["code"],
+        status=StrategyStatus.DRAFT,
+        created_by=current_user.id if current_user else None
+    )
+    db.add(strategy)
+    db.commit()
+    db.refresh(strategy)
+
+    return StrategyResponse(
+        id=strategy.id,
+        name=strategy.name,
+        description=strategy.description or "",
+        code=strategy.strategy_code,
+        status=strategy.status.value,
+        created_at=strategy.created_at
+    )
+
+
+@router.get("/builtin/{strategy_id}/code")
+def get_builtin_strategy_code(strategy_id: str):
+    """
+    Get the code of a built-in strategy.
+    """
+    builtin = get_builtin_strategy(strategy_id)
+    if not builtin:
+        raise HTTPException(status_code=404, detail="Built-in strategy not found")
+    return builtin
 
 
 @router.post("/backtest", response_model=BacktestResponse)

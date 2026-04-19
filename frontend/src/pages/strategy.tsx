@@ -28,6 +28,7 @@ import {
   Refresh as RefreshIcon,
   PlayArrow as PlayArrowIcon,
   Code as CodeIcon,
+  FlashOn as FlashOnIcon,
 } from '@mui/icons-material';
 import ReactECharts from 'echarts-for-react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -43,6 +44,13 @@ interface Strategy {
   status: string;
   created_at: string;
   updated_at: string;
+}
+
+interface BuiltinStrategy {
+  id: string;
+  name: string;
+  description: string;
+  code?: string;
 }
 
 interface BacktestResult {
@@ -70,6 +78,10 @@ export const StrategyPage: React.FC = () => {
   const [selectedStrategy, setSelectedStrategy] = useState<Strategy | null>(null);
   const [codeDialogOpen, setCodeDialogOpen] = useState(false);
 
+  // 内置策略
+  const [builtinStrategies, setBuiltinStrategies] = useState<BuiltinStrategy[]>([]);
+  const [selectedBuiltin, setSelectedBuiltin] = useState<BuiltinStrategy | null>(null);
+
   // 回测相关状态
   const [backtestSymbol, setBacktestSymbol] = useState('000001');
   const [backtestCapital, setBacktestCapital] = useState(1000000);
@@ -90,9 +102,58 @@ export const StrategyPage: React.FC = () => {
     }
   };
 
+  // 加载内置策略
+  const loadBuiltinStrategies = async () => {
+    try {
+      const response = await fetch(`${API_URL}/strategy/builtin`);
+      const data = await response.json();
+      setBuiltinStrategies(data.strategies || []);
+    } catch (err) {
+      console.error('加载内置策略失败', err);
+    }
+  };
+
   useEffect(() => {
     loadStrategies();
+    loadBuiltinStrategies();
   }, []);
+
+  // 应用内置策略
+  const handleApplyBuiltin = async (builtin: BuiltinStrategy) => {
+    try {
+      const response = await fetch(`${API_URL}/strategy/builtin/apply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          strategy_id: builtin.id,
+          name: builtin.name,
+          description: builtin.description,
+        }),
+      });
+      const data = await response.json();
+      if (data.id) {
+        setSavedStrategies([data, ...savedStrategies]);
+        setCode(data.code || '');
+        setDescription(data.description || '');
+      }
+    } catch (err) {
+      setError('应用内置策略失败');
+    }
+  };
+
+  // 查看内置策略代码
+  const handleViewBuiltinCode = async (builtin: BuiltinStrategy) => {
+    try {
+      const response = await fetch(`${API_URL}/strategy/builtin/${builtin.id}/code`);
+      const data = await response.json();
+      setSelectedBuiltin(data);
+      setCode(data.code || '');
+      setDescription(data.description || '');
+      setCodeDialogOpen(true);
+    } catch (err) {
+      setError('加载策略代码失败');
+    }
+  };
 
   // 加载策略代码
   const handleLoadStrategy = async (strategy: Strategy) => {
@@ -222,6 +283,50 @@ export const StrategyPage: React.FC = () => {
           {error}
         </Alert>
       )}
+
+      {/* 内置策略 */}
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+            <FlashOnIcon color="primary" />
+            <Typography variant="h6">内置策略</Typography>
+          </Box>
+          <Grid container spacing={2}>
+            {builtinStrategies.map((s) => (
+              <Grid key={s.id} size={{ xs: 12, sm: 6, md: 4 }}>
+                <Card variant="outlined" sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' } }}>
+                  <CardContent sx={{ pb: '16px !important' }}>
+                    <Typography variant="subtitle1" fontWeight="bold">
+                      {s.name}
+                    </Typography>
+                    <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
+                      {s.description}
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<CodeIcon />}
+                        onClick={() => handleViewBuiltinCode(s)}
+                      >
+                        查看
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="contained"
+                        startIcon={<PlayArrowIcon />}
+                        onClick={() => handleApplyBuiltin(s)}
+                      >
+                        应用
+                      </Button>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        </CardContent>
+      </Card>
 
       {/* 保存的策略列表 */}
       <Card sx={{ mb: 3 }}>
@@ -510,15 +615,15 @@ export const StrategyPage: React.FC = () => {
 
       {/* 代码查看对话框 */}
       <Dialog open={codeDialogOpen} onClose={() => setCodeDialogOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle>{selectedStrategy?.name || '策略代码'}</DialogTitle>
+        <DialogTitle>{(selectedStrategy || selectedBuiltin)?.name || '策略代码'}</DialogTitle>
         <DialogContent>
-          {selectedStrategy?.code && (
+          {((selectedStrategy || selectedBuiltin))?.code && (
             <SyntaxHighlighter
               language="python"
               style={vscDarkPlus}
               customStyle={{ margin: 0, borderRadius: 4, maxHeight: '60vh' }}
             >
-              {selectedStrategy.code}
+              {(selectedStrategy || selectedBuiltin)?.code || ''}
             </SyntaxHighlighter>
           )}
         </DialogContent>

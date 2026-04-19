@@ -14,7 +14,7 @@ def fetch_and_save_daily_data(
     """
     Fetch daily k-line data and save to database.
     start_date, end_date format: 'YYYYMMDD'
-    source: 'auto', 'akshare', or 'tushare'
+    source: 'auto', 'baostock', 'akshare', or 'tushare'
     """
     result = {
         "success": False,
@@ -23,7 +23,7 @@ def fetch_and_save_daily_data(
         "source": source
     }
 
-    tried_tushare = False
+    tried_sources = []
 
     try:
         # 设置数据源偏好
@@ -86,12 +86,15 @@ def fetch_and_save_daily_data(
         db.rollback()
         error_msg = str(e)
 
-        # 如果 AKShare 失败且用户使用 auto，尝试 Tushare
-        if source == "auto" and not tried_tushare and "akshare" in error_msg.lower():
-            result["message"] = f"AKShare failed: {error_msg}, trying Tushare..."
-            # 递归调用使用 tushare
-            tried_tushare = True
-            return fetch_and_save_daily_data(db, symbol, start_date, end_date, "tushare")
+        # 如果 auto 模式失败，尝试其他数据源
+        if source == "auto":
+            tried_sources.append(data_source_manager.current_source.get_name())
+            if "baostock" not in tried_sources:
+                result["message"] = f"BaoStock failed: {error_msg}, trying AKShare..."
+                return fetch_and_save_daily_data(db, symbol, start_date, end_date, "akshare")
+            elif "akshare" not in tried_sources:
+                result["message"] = f"AKShare failed: {error_msg}, trying Tushare..."
+                return fetch_and_save_daily_data(db, symbol, start_date, end_date, "tushare")
 
         result["message"] = error_msg
         print(f"Error fetching/saving data for {symbol}: {e}")

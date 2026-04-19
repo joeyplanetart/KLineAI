@@ -1,8 +1,9 @@
 """
 数据源管理器
-支持 AKShare（默认）和 Tushare
+支持 AKShare（默认）、Tushare 和 BaoStock
 """
 import akshare as ak
+import baostock as bs
 import pandas as pd
 from abc import ABC, abstractmethod
 from typing import Optional
@@ -144,6 +145,104 @@ class TushareDataSource(BaseDataSource):
             raise ConnectionError(f"Tushare failed: {str(e)}") from e
 
 
+class BaoStockDataSource(BaseDataSource):
+    """BaoStock 数据源 - 免费无需Token"""
+
+    def __init__(self):
+        self._logged_in = False
+
+    def get_name(self) -> str:
+        return "BaoStock"
+
+    def is_available(self) -> bool:
+        """BaoStock 总是可用"""
+        return True
+
+    def _ensure_login(self):
+        """确保已登录"""
+        if not self._logged_in:
+            lg = bs.login()
+            if lg.error_code != '0':
+                raise ConnectionError(f"BaoStock login failed: {lg.error_msg}")
+            self._logged_in = True
+
+    def fetch_daily(
+        self,
+        symbol: str,
+        start_date: str,
+        end_date: str
+    ) -> pd.DataFrame:
+        """
+        使用 BaoStock 获取 A 股日K线数据
+        symbol: 如 '000001' (会自动转换为 sz.000001 或 sh.XXXXXX)
+        注意：BaoStock 的日期格式是 '2024-01-01' 不是 '20240101'
+        """
+        try:
+            self._ensure_login()
+
+            # 转换 symbol 格式
+            if symbol.startswith('sh') or symbol.startswith('sz'):
+                bs_symbol = symbol  # 已经是正确格式
+            else:
+                # 假设 6 位代码是上海，其他是深圳
+                if len(symbol) == 6:
+                    if symbol.startswith('6'):
+                        bs_symbol = f'sh.{symbol}'
+                    else:
+                        bs_symbol = f'sz.{symbol}'
+                else:
+                    bs_symbol = f'sz.{symbol}'
+
+            # 转换日期格式 (YYYYMMDD -> YYYY-MM-DD)
+            if len(start_date) == 8:
+                start_date = f'{start_date[:4]}-{start_date[4:6]}-{start_date[6:8]}'
+            if len(end_date) == 8:
+                end_date = f'{end_date[:4]}-{end_date[4:6]}-{end_date[6:8]}'
+
+            rs = bs.query_history_k_data_plus(
+                bs_symbol,
+                'date,open,high,low,close,volume,amount',
+                start_date=start_date,
+                end_date=end_date,
+                frequency='d'
+            )
+
+            if rs.error_code != '0':
+                raise ConnectionError(f"BaoStock query failed: {rs.error_msg}")
+
+            data_list = []
+            while rs.next():
+                data_list.append(rs.get_row_data())
+
+            if not data_list:
+                return pd.DataFrame()
+
+            df = pd.DataFrame(data_list, columns=rs.fields)
+
+            # 标准化列名
+            df = df.rename(columns={
+                "date": "date",
+                "open": "open",
+                "close": "close",
+                "high": "high",
+                "low": "low",
+                "volume": "volume",
+                "amount": "amount",
+            })
+
+            # 转换数值类型
+            for col in ["open", "close", "high", "low", "volume", "amount"]:
+                if col in df.columns:
+                    df[col] = pd.to_numeric(df[col], errors='coerce')
+
+            return df
+
+        except ConnectionError:
+            raise
+        except Exception as e:
+            raise ConnectionError(f"BaoStock failed: {str(e)}") from e
+
+
 class DataSourceManager:
     """
     数据源管理器
@@ -153,8 +252,9 @@ class DataSourceManager:
     def __init__(self):
         self.akshare = AKShareDataSource()
         self.tushare = TushareDataSource()
+        self.baostock = BaoStockDataSource()
         self._current_source: Optional[BaseDataSource] = None
-        self._preferred_source = "akshare"  # 用户偏好
+        self._preferred_source = "baostock"  # 用户偏好，baostock更稳定
 
     @property
     def current_source(self) -> BaseDataSource:
@@ -167,9 +267,11 @@ class DataSourceManager:
             self._current_source = self.akshare
         elif self._preferred_source == "tushare" and self.tushare.is_available():
             self._current_source = self.tushare
+        elif self._preferred_source == "baostock":
+            self._current_source = self.baostock
         else:
-            # 默认使用 AKShare
-            self._current_source = self.akshare
+            # 默认使用 BaoStock（最稳定）
+            self._current_source = self.baostock
 
         return self._current_source
 
@@ -182,10 +284,16 @@ class DataSourceManager:
         """获取所有可用的数据源"""
         sources = []
         sources.append({
+            "name": "BaoStock",
+            "id": "baostock",
+            "available": self.baostock.is_available(),
+            "description": "免费无需Token，稳定可靠（默认）"
+        })
+        sources.append({
             "name": "AKShare",
             "id": "akshare",
             "available": self.akshare.is_available(),
-            "description": "免费开源数据源（默认）"
+            "description": "免费开源数据源"
         })
         sources.append({
             "name": "Tushare",

@@ -64,7 +64,7 @@ export const DashboardPage: React.FC = () => {
   const [fetching, setFetching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dataSources, setDataSources] = useState<DataSource[]>([]);
-  const [selectedSource, setSelectedSource] = useState('auto');
+  const [selectedSource, setSelectedSource] = useState('baostock');
   const [lastFetchMessage, setLastFetchMessage] = useState<string | null>(null);
   const [stockOptions, setStockOptions] = useState<StockOption[]>([]);
   const [selectedStock, setSelectedStock] = useState<StockOption | null>(null);
@@ -339,7 +339,7 @@ export const DashboardPage: React.FC = () => {
                 label="数据源"
                 onChange={(e) => setSelectedSource(e.target.value)}
               >
-                <MenuItem value="auto">自动选择</MenuItem>
+                <MenuItem value="baostock">BaoStock（推荐）</MenuItem>
                 <MenuItem value="akshare" disabled={!dataSources.find(d => d.id === 'akshare')?.available}>
                   AKShare
                 </MenuItem>

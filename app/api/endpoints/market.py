@@ -56,6 +56,7 @@ class BatchFetchRequest(BaseModel):
     start_date: str
     end_date: str
     source: str = "baostock"
+    adjust: str = "qfq"  # qfq=前复权, hfq=后复权, 3=不复权
 
 
 class BatchFetchResponse(BaseModel):
@@ -176,6 +177,7 @@ def trigger_data_fetch(
     start_date: str,
     end_date: str,
     source: Optional[str] = "auto",
+    adjust: Optional[str] = "qfq",
     background_tasks: BackgroundTasks = None,
     db: Session = Depends(get_db)
 ) -> FetchResponse:
@@ -187,8 +189,11 @@ def trigger_data_fetch(
             'baostock' (force BaoStock),
             'akshare' (force AKShare),
             'tushare' (force Tushare)
+
+    adjust: 'qfq' (前复权, default), 'hfq' (后复权), '3' (不复权)
+            注意：仅 BaoStock 和 Tushare 支持此参数
     """
-    result = fetch_and_save_daily_data(db, symbol, start_date, end_date, source)
+    result = fetch_and_save_daily_data(db, symbol, start_date, end_date, source, adjust=adjust)
     return FetchResponse(
         message=result["message"],
         source=result["source"],
@@ -222,7 +227,8 @@ def batch_fetch_stocks(
         request.symbols,
         request.start_date,
         request.end_date,
-        request.source
+        request.source,
+        adjust=request.adjust
     )
 
     return BatchFetchResponse(
@@ -297,21 +303,30 @@ def get_data_quality_summary(days: int = 30, db: Session = Depends(get_db)) -> D
     return summary
 
 
-@router.get("/quality/anomalies", response_model=List[AnomalyRecord])
+@router.get("/quality/anomalies")
 def get_data_quality_anomalies(
     days: int = 30,
-    limit: int = 100,
+    page: int = 1,
+    page_size: int = 50,
     resolved: bool = False,
+    anomaly_type: str = None,
+    symbol: str = None,
     db: Session = Depends(get_db)
-) -> List[AnomalyRecord]:
+):
     """
-    Get recent data quality anomalies.
+    Get paginated data quality anomalies.
 
     Args:
         days: Number of days to look back
-        limit: Maximum number of records to return
+        page: Page number (1-based)
+        page_size: Number of records per page (default 50, max 100)
         resolved: If True, include resolved anomalies
+        anomaly_type: Filter by anomaly type
+        symbol: Filter by stock symbol
     """
+    page_size = min(page_size, 100)
+    offset = (page - 1) * page_size
+
     end_date = datetime.now().date()
     start_date = end_date - timedelta(days=days)
 
@@ -322,11 +337,28 @@ def get_data_quality_anomalies(
     if not resolved:
         query = query.filter(DataQualityLog.resolved == False)
 
+    if anomaly_type:
+        query = query.filter(DataQualityLog.anomaly_type == anomaly_type)
+
+    if symbol:
+        query = query.filter(DataQualityLog.symbol == symbol)
+
+    # Get total count
+    total = query.count()
+
     anomalies = query.order_by(
         DataQualityLog.created_at.desc()
-    ).limit(limit).all()
+    ).offset(offset).limit(page_size).all()
 
-    return anomalies
+    return {
+        "data": anomalies,
+        "pagination": {
+            "page": page,
+            "page_size": page_size,
+            "total": total,
+            "total_pages": (total + page_size - 1) // page_size if total > 0 else 0
+        }
+    }
 
 
 @router.post("/quality/anomalies/{anomaly_id}/resolve")
@@ -359,35 +391,70 @@ def resolve_anomaly(
 
 @router.get("/list")
 def get_stock_list(
+    page: int = 1,
+    page_size: int = 50,
     exchange: str = None,
-    limit: int = 100,
+    status: str = None,
+    search: str = None,
     db: Session = Depends(get_db)
 ):
     """
-    Get list of stocks from database.
+    Get paginated list of stocks from database.
 
     Args:
+        page: Page number (1-based)
+        page_size: Number of records per page (default 50, max 100)
         exchange: Filter by exchange (SH, SZ)
-        limit: Maximum number of records
+        status: Filter by status (active, suspended, delisted)
+        search: Search by code or name (partial match)
     """
+    # Limit page_size to prevent overload
+    page_size = min(page_size, 100)
+    offset = (page - 1) * page_size
+
     query = db.query(StockInfoModel)
 
+    # Apply filters
     if exchange:
-        query = query.filter(StockInfoModel.exchange == exchange)
+        query = query.filter(StockInfoModel.exchange == exchange.upper())
 
-    stocks = query.limit(limit).all()
+    if status:
+        query = query.filter(StockInfoModel.status == status.lower())
 
-    return [
-        {
-            "symbol": s.symbol,
-            "code": s.code,
-            "name": s.name,
-            "exchange": s.exchange,
-            "status": s.status if hasattr(s, 'status') and s.status else 'active',
-            "listing_date": s.listing_date.isoformat() if s.listing_date else None
+    if search:
+        search_pattern = f"%{search}%"
+        query = query.filter(
+            (StockInfoModel.code.ilike(search_pattern)) |
+            (StockInfoModel.name.ilike(search_pattern))
+        )
+
+    # Get total count before pagination
+    total = query.count()
+
+    # Apply pagination
+    stocks = query.order_by(StockInfoModel.code.asc()).offset(offset).limit(page_size).all()
+
+    return {
+        "data": [
+            {
+                "symbol": s.symbol,
+                "code": s.code,
+                "name": s.name,
+                "exchange": s.exchange,
+                "status": s.status.value if hasattr(s, 'status') and s.status else 'active',
+                "listing_date": s.listing_date.isoformat() if s.listing_date else None,
+                "industry": s.industry if hasattr(s, 'industry') else None,
+                "market_cap": s.market_cap if hasattr(s, 'market_cap') else None
+            }
+            for s in stocks
+        ],
+        "pagination": {
+            "page": page,
+            "page_size": page_size,
+            "total": total,
+            "total_pages": (total + page_size - 1) // page_size if total > 0 else 0
         }
-        for s in stocks
-    ]
+    }
 
 
 @router.post("/sync")
@@ -415,18 +482,69 @@ def sync_stock_list(
     }
 
 
-@router.get("/{symbol}", response_model=List[StockDailySchema])
+@router.get("/{symbol}")
 def get_stock_data(
     symbol: str,
-    limit: int = 100,
+    page: int = 1,
+    page_size: int = 100,
+    start_date: str = None,
+    end_date: str = None,
     db: Session = Depends(get_db)
-) -> Any:
+):
     """
-    Get daily data for a specific stock symbol.
+    Get paginated daily data for a specific stock symbol.
+
+    Args:
+        symbol: Stock symbol (e.g., sz002402, sh600000)
+        page: Page number (1-based)
+        page_size: Number of records per page (default 100, max 500)
+        start_date: Filter by start date (YYYYMMDD)
+        end_date: Filter by end date (YYYYMMDD)
     """
-    data = db.query(StockDaily).filter(StockDaily.symbol == symbol).order_by(
-        StockDaily.trade_date.desc()
-    ).limit(limit).all()
-    if not data:
+    page_size = min(page_size, 500)
+    offset = (page - 1) * page_size
+
+    query = db.query(StockDaily).filter(StockDaily.symbol == symbol)
+
+    # Apply date filters if provided
+    if start_date:
+        start = datetime.strptime(start_date, "%Y%m%d").date()
+        query = query.filter(StockDaily.trade_date >= start)
+
+    if end_date:
+        end = datetime.strptime(end_date, "%Y%m%d").date()
+        query = query.filter(StockDaily.trade_date <= end)
+
+    # Get total count
+    total = query.count()
+
+    data = query.order_by(StockDaily.trade_date.desc()).offset(offset).limit(page_size).all()
+
+    if not data and page == 1:
         raise HTTPException(status_code=404, detail="Data not found")
-    return data
+
+    return {
+        "symbol": symbol,
+        "data": [
+            {
+                "trade_date": d.trade_date.isoformat() if d.trade_date else None,
+                "open": d.open,
+                "close": d.close,
+                "high": d.high,
+                "low": d.low,
+                "volume": d.volume,
+                "amount": d.amount,
+                "pct_change": d.pct_change,
+                "change_amount": d.change_amount if hasattr(d, 'change_amount') else None,
+                "turnover_rate": d.turnover_rate if hasattr(d, 'turnover_rate') else None,
+                "amplitude": d.amplitude if hasattr(d, 'amplitude') else None
+            }
+            for d in data
+        ],
+        "pagination": {
+            "page": page,
+            "page_size": page_size,
+            "total": total,
+            "total_pages": (total + page_size - 1) // page_size if total > 0 else 0
+        }
+    }

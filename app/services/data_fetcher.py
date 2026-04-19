@@ -13,13 +13,15 @@ def fetch_and_save_daily_data(
     start_date: str,
     end_date: str,
     source: str = "auto",
-    validate: bool = True
+    validate: bool = True,
+    adjust: str = "qfq"
 ) -> dict:
     """
     Fetch daily k-line data and save to database.
     start_date, end_date format: 'YYYYMMDD'
     source: 'auto', 'baostock', 'akshare', or 'tushare'
     validate: whether to run data validation
+    adjust: 'qfq' (前复权), 'hfq' (后复权), '3' (不复权)
     """
     result = {
         "success": False,
@@ -42,8 +44,8 @@ def fetch_and_save_daily_data(
         if source != "auto":
             data_source_manager.set_preferred_source(source)
 
-        # 获取数据
-        df = data_source_manager.fetch_daily(symbol, start_date, end_date)
+        # 获取数据（带复权参数）
+        df = data_source_manager.fetch_daily(symbol, start_date, end_date, adjust=adjust)
 
         if df is None or df.empty:
             result["message"] = f"No data fetched for {symbol} ({start_date} to {end_date})"

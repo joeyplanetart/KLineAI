@@ -30,6 +30,8 @@ import {
   FormControl,
   InputLabel,
   Snackbar,
+  Pagination,
+  InputAdornment,
 } from '@mui/material';
 import {
   CloudDone as CloudDoneIcon,
@@ -45,6 +47,7 @@ import {
   Edit as EditIcon,
   Save as SaveIcon,
   PlayArrow as PlayArrowIcon,
+  Search as SearchIcon,
 } from '@mui/icons-material';
 
 const API_URL = 'http://localhost:8000/api/v1';
@@ -115,6 +118,13 @@ interface TaskInfo {
   is_enabled: boolean;
 }
 
+interface PaginationInfo {
+  page: number;
+  page_size: number;
+  total: number;
+  total_pages: number;
+}
+
 export const DataManagementPage: React.FC = () => {
   const [tabValue, setTabValue] = useState(0);
   const [dataSources, setDataSources] = useState<DataSource[]>([]);
@@ -122,7 +132,11 @@ export const DataManagementPage: React.FC = () => {
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [stockList, setStockList] = useState<StockInfo[]>([]);
+  const [stockPagination, setStockPagination] = useState<PaginationInfo>({ page: 1, page_size: 50, total: 0, total_pages: 0 });
+  const [stockSearch, setStockSearch] = useState('');
+  const [stockExchange, setStockExchange] = useState<string>('');
   const [anomalies, setAnomalies] = useState<DataQualityAnomaly[]>([]);
+  const [anomalyPagination, setAnomalyPagination] = useState<PaginationInfo>({ page: 1, page_size: 50, total: 0, total_pages: 0 });
   const [qualitySummary, setQualitySummary] = useState<any>(null);
 
   // Batch fetch states
@@ -182,12 +196,20 @@ export const DataManagementPage: React.FC = () => {
   };
 
   // Fetch stock list
-  const fetchStockList = async () => {
+  const fetchStockList = async (page: number = 1, search: string = '', exchange: string = '') => {
     try {
-      const response = await fetch(`${API_URL}/market/list?limit=50`);
+      const params = new URLSearchParams({
+        page: String(page),
+        page_size: '50',
+      });
+      if (search) params.append('search', search);
+      if (exchange) params.append('exchange', exchange);
+
+      const response = await fetch(`${API_URL}/market/list?${params.toString()}`);
       if (response.ok) {
         const data = await response.json();
-        setStockList(data);
+        setStockList(data.data);
+        setStockPagination(data.pagination);
       }
     } catch (err) {
       console.error('Failed to fetch stock list:', err);
@@ -195,18 +217,20 @@ export const DataManagementPage: React.FC = () => {
   };
 
   // Fetch data quality
-  const fetchDataQuality = async () => {
+  const fetchDataQuality = async (page: number = 1) => {
     try {
       const [summaryRes, anomaliesRes] = await Promise.all([
         fetch(`${API_URL}/market/quality?days=30`),
-        fetch(`${API_URL}/market/quality/anomalies?days=30&limit=100`)
+        fetch(`${API_URL}/market/quality/anomalies?days=30&page=${page}&page_size=50`)
       ]);
 
       if (summaryRes.ok) {
         setQualitySummary(await summaryRes.json());
       }
       if (anomaliesRes.ok) {
-        setAnomalies(await anomaliesRes.json());
+        const anomaliesData = await anomaliesRes.json();
+        setAnomalies(anomaliesData.data);
+        setAnomalyPagination(anomaliesData.pagination);
       }
     } catch (err) {
       console.error('Failed to fetch data quality:', err);
@@ -448,6 +472,41 @@ export const DataManagementPage: React.FC = () => {
                 {syncMessage}
               </Alert>
             )}
+            {/* Search and Filter */}
+            <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+              <TextField
+                size="small"
+                placeholder="搜索代码或名称"
+                value={stockSearch}
+                onChange={(e) => setStockSearch(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && fetchStockList(1, stockSearch, stockExchange)}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton onClick={() => fetchStockList(1, stockSearch, stockExchange)} edge="end">
+                        <SearchIcon />
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+                sx={{ width: 250 }}
+              />
+              <FormControl size="small" sx={{ minWidth: 120 }}>
+                <InputLabel>交易所</InputLabel>
+                <Select
+                  value={stockExchange}
+                  onChange={(e) => {
+                    setStockExchange(e.target.value);
+                    fetchStockList(1, stockSearch, e.target.value);
+                  }}
+                  label="交易所"
+                >
+                  <MenuItem value="">全部</MenuItem>
+                  <MenuItem value="SH">上海</MenuItem>
+                  <MenuItem value="SZ">深圳</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
             <TableContainer component={Paper}>
               <Table size="small">
                 <TableHead>
@@ -460,7 +519,7 @@ export const DataManagementPage: React.FC = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {stockList.slice(0, 20).map((stock) => (
+                  {stockList.map((stock) => (
                     <TableRow key={stock.symbol}>
                       <TableCell>{stock.code}</TableCell>
                       <TableCell>{stock.name}</TableCell>
@@ -478,9 +537,19 @@ export const DataManagementPage: React.FC = () => {
                 </TableBody>
               </Table>
             </TableContainer>
-            <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
-              显示 {Math.min(20, stockList.length)} / {stockList.length} 条记录
-            </Typography>
+            {/* Pagination */}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
+              <Typography variant="body2" color="textSecondary">
+                共 {stockPagination.total} 条记录，第 {stockPagination.page}/{stockPagination.total_pages} 页
+              </Typography>
+              <Pagination
+                count={stockPagination.total_pages}
+                page={stockPagination.page}
+                onChange={(_, p) => fetchStockList(p, stockSearch, stockExchange)}
+                color="primary"
+                size="small"
+              />
+            </Box>
           </CardContent>
         </Card>
       </TabPanel>
@@ -534,7 +603,7 @@ export const DataManagementPage: React.FC = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {anomalies.slice(0, 20).map((anomaly) => (
+                  {anomalies.map((anomaly) => (
                     <TableRow key={anomaly.id}>
                       <TableCell>{anomaly.symbol}</TableCell>
                       <TableCell>{anomaly.trade_date}</TableCell>
@@ -559,6 +628,19 @@ export const DataManagementPage: React.FC = () => {
                 </TableBody>
               </Table>
             </TableContainer>
+            {/* Pagination */}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
+              <Typography variant="body2" color="textSecondary">
+                共 {anomalyPagination.total} 条记录，第 {anomalyPagination.page}/{anomalyPagination.total_pages} 页
+              </Typography>
+              <Pagination
+                count={anomalyPagination.total_pages}
+                page={anomalyPagination.page}
+                onChange={(_, p) => fetchDataQuality(p)}
+                color="primary"
+                size="small"
+              />
+            </Box>
           </CardContent>
         </Card>
       </TabPanel>

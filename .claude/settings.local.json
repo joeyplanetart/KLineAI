@@ -43,7 +43,8 @@
       "Bash(/Users/joey/KLineAI/venv/bin/python:*)",
       "Bash(npm run build)",
       "Bash(/Users/joey/KLineAI/venv/bin/pip install baostock)",
-      "Bash(venv/bin/python:*)"
+      "Bash(venv/bin/python:*)",
+      "Bash(npx tsc --noEmit --skipLibCheck)"
     ]
   }
 }

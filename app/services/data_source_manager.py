@@ -53,14 +53,17 @@ class AKShareDataSource(BaseDataSource):
         self,
         symbol: str,
         start_date: str,
-        end_date: str
+        end_date: str,
+        adjust: str = "qfq"
     ) -> pd.DataFrame:
         """
         使用 AKShare 获取 A 股日K线数据
         symbol: 如 'sh600000', 'sz000001'
+        注意：AKShare stock_zh_a_hist_tx 不支持复权参数，返回的是前复权数据
         """
         try:
             # 使用腾讯接口获取数据（东方财富接口不稳定）
+            # 注意：腾讯接口返回的已是前复权数据
             df = ak.stock_zh_a_hist_tx(
                 symbol=symbol,
                 start_date=start_date,
@@ -104,11 +107,13 @@ class TushareDataSource(BaseDataSource):
         self,
         symbol: str,
         start_date: str,
-        end_date: str
+        end_date: str,
+        adjust: str = "qfq"
     ) -> pd.DataFrame:
         """
         使用 Tushare 获取 A 股日K线数据
         symbol: 如 '600000' (上海), '000001' (深圳)
+        adjust: 'qfq'=前复权, 'hfq'=后复权 (Tushare需要pro_token)
         """
         if not self.token:
             raise ConnectionError("Tushare token not configured")
@@ -126,10 +131,13 @@ class TushareDataSource(BaseDataSource):
             elif symbol.startswith('sz'):
                 ts_code = symbol[2:] + '.SZ'
 
+            # Tushare的复权参数：qfq=前复权, hfq=后复权
+            # 注意：需要开通相应权限才能使用复权数据
             df = self.api.daily(
                 ts_code=ts_code,
                 start_date=start_date,
-                end_date=end_date
+                end_date=end_date,
+                adjust=adjust if adjust in ['qfq', 'hfq'] else None
             )
 
             if df is None or df.empty:
@@ -171,11 +179,13 @@ class BaoStockDataSource(BaseDataSource):
         self,
         symbol: str,
         start_date: str,
-        end_date: str
+        end_date: str,
+        adjust: str = "qfq"  # qfq=前复权, hfq=后复权, 3=不复权
     ) -> pd.DataFrame:
         """
         使用 BaoStock 获取 A 股日K线数据
         symbol: 如 '000001' (会自动转换为 sz.000001 或 sh.XXXXXX)
+        adjust: 'qfq'=前复权(默认), 'hfq'=后复权, '3'=不复权
         注意：BaoStock 的日期格式是 '2024-01-01' 不是 '20240101'
         """
         try:
@@ -202,14 +212,15 @@ class BaoStockDataSource(BaseDataSource):
             if len(end_date) == 8:
                 end_date = f'{end_date[:4]}-{end_date[4:6]}-{end_date[6:8]}'
 
-            print(f"[BaoStock] Querying {bs_symbol} from {start_date} to {end_date}")
+            print(f"[BaoStock] Querying {bs_symbol} from {start_date} to {end_date} (adjust={adjust})")
 
             rs = bs.query_history_k_data_plus(
                 bs_symbol,
                 'date,open,high,low,close,volume,amount',
                 start_date=start_date,
                 end_date=end_date,
-                frequency='d'
+                frequency='d',
+                adjustflag='1'  # 1=前复权, 2=后复权, 3=不复权
             )
 
             if rs.error_code != '0':
@@ -314,10 +325,11 @@ class DataSourceManager:
         self,
         symbol: str,
         start_date: str,
-        end_date: str
+        end_date: str,
+        adjust: str = "qfq"  # qfq=前复权, hfq=后复权, 3=不复权
     ) -> pd.DataFrame:
         """使用当前数据源获取数据"""
-        return self.current_source.fetch_daily(symbol, start_date, end_date)
+        return self.current_source.fetch_daily(symbol, start_date, end_date, adjust)
 
     def fetch_stock_list(self) -> List[Dict]:
         """

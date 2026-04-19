@@ -60,7 +60,8 @@ class BatchCollector:
         start_date: str,
         end_date: str,
         source: str = "baostock",
-        progress_callback: Optional[Callable] = None
+        progress_callback: Optional[Callable] = None,
+        adjust: str = "qfq"
     ) -> Dict[str, dict]:
         """
         Batch fetch data for multiple stocks.
@@ -72,6 +73,7 @@ class BatchCollector:
             end_date: End date in YYYYMMDD format
             source: Data source to use
             progress_callback: Optional callback(symbol, result) for progress reporting
+            adjust: 'qfq' (前复权), 'hfq' (后复权), '3' (不复权)
 
         Returns:
             Dict mapping symbol to result dict
@@ -94,7 +96,7 @@ class BatchCollector:
                 last_result = None
                 for attempt in range(self.max_retries):
                     result = fetch_and_save_daily_data(
-                        db, symbol, start_date, end_date, source, validate=True
+                        db, symbol, start_date, end_date, source, validate=True, adjust=adjust
                     )
                     last_result = result
                     if result["success"]:

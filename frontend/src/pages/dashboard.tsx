@@ -105,12 +105,12 @@ export const DashboardPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${API_URL}/market/${stockSymbol}?limit=100`);
+      const response = await fetch(`${API_URL}/market/${stockSymbol}?page=1&page_size=100`);
       if (!response.ok) {
         throw new Error('获取数据失败');
       }
       const data = await response.json();
-      setStockData(data);
+      setStockData(data.data || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : '获取数据失败');
       setStockData([]);

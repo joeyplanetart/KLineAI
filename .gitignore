@@ -47,6 +47,9 @@ frontend.log
 # Docker
 .dockerignore
 
+# Claude
+.claude/
+
 # OS
 .DS_Store
 Thumbs.db

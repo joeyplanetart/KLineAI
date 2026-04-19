@@ -130,7 +130,7 @@ class HistoricalCollector:
 
         # Get all active stocks
         stocks = db.query(StockInfo).filter(
-            StockStatus.ACTIVE
+            StockInfo.status == StockStatus.ACTIVE
         ).all()
 
         symbols = [s.symbol for s in stocks]
@@ -163,7 +163,7 @@ class HistoricalCollector:
 
         # Get all active stocks
         stocks = db.query(StockInfo).filter(
-            StockStatus.ACTIVE
+            StockInfo.status == StockStatus.ACTIVE
         ).all()
 
         symbols = [s.symbol for s in stocks]

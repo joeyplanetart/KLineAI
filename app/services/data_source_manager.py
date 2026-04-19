@@ -7,6 +7,7 @@ import baostock as bs
 import pandas as pd
 from abc import ABC, abstractmethod
 from typing import Optional, List, Dict
+from datetime import datetime
 from app.core.config import settings
 
 
@@ -347,6 +348,74 @@ class DataSourceManager:
         except Exception as e:
             print(f"Error fetching stock list: {e}")
             raise ConnectionError(f"Failed to fetch stock list: {e}")
+
+
+    def fetch_realtime(self, symbol: str) -> Optional[Dict]:
+        """
+        获取实时行情数据
+        symbol: 如 'sh600000', 'sz000001', '000001' (指数)
+        返回格式: dict 或 None
+        """
+        try:
+            # 尝试使用 AKShare 获取实时数据
+            # 注意：实时行情接口可能不稳定
+            code = symbol
+            if symbol.startswith('sh') or symbol.startswith('sz'):
+                code = symbol[2:]  # 去掉 sh/sz 前缀
+
+            # 尝试获取实时行情
+            try:
+                df = ak.stock_zh_a_spot_em()
+                if df is not None and not df.empty:
+                    # 搜索对应股票
+                    # 格式: 代码列可能是 'code' 或 '代码'
+                    code_col = None
+                    for col in df.columns:
+                        if 'code' in col.lower() or '代码' in col:
+                            code_col = col
+                            break
+
+                    if code_col:
+                        row = df[df[code_col] == code]
+                        if not row.empty:
+                            row = row.iloc[0]
+                            # 尝试找到对应列
+                            result = {}
+                            for col in df.columns:
+                                col_lower = col.lower()
+                                if 'name' in col_lower or '名称' in col:
+                                    result['name'] = row[col]
+                                elif 'price' in col_lower or '最新价' in col:
+                                    result['price'] = float(row[col]) if pd.notna(row[col]) else 0
+                                elif 'change' in col_lower or '涨跌' in col:
+                                    result['change'] = float(row[col]) if pd.notna(row[col]) else 0
+                                elif 'pct_change' in col_lower or '涨跌幅' in col:
+                                    result['pct_change'] = float(row[col]) if pd.notna(row[col]) else 0
+                                elif 'volume' in col_lower or '成交量' in col:
+                                    result['volume'] = int(row[col]) if pd.notna(row[col]) else 0
+                                elif 'amount' in col_lower or '成交额' in col:
+                                    result['amount'] = float(row[col]) if pd.notna(row[col]) else 0
+                                elif 'high' in col_lower or '最高' in col:
+                                    result['high'] = float(row[col]) if pd.notna(row[col]) else 0
+                                elif 'low' in col_lower or '最低' in col:
+                                    result['low'] = float(row[col]) if pd.notna(row[col]) else 0
+                                elif 'open' in col_lower or '开盘' in col:
+                                    result['open'] = float(row[col]) if pd.notna(row[col]) else 0
+                                elif 'prev_close' in col_lower or '昨收' in col:
+                                    result['prev_close'] = float(row[col]) if pd.notna(row[col]) else 0
+
+                            if result:
+                                result['symbol'] = symbol
+                                result['timestamp'] = datetime.now().isoformat()
+                                return result
+            except Exception as e:
+                print(f"AKShare realtime fetch error: {e}")
+
+            return None
+
+        except Exception as e:
+            print(f"Error fetching realtime for {symbol}: {e}")
+            return None
 
 
 # 全局单例

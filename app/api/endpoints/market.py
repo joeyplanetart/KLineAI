@@ -196,23 +196,6 @@ def trigger_data_fetch(
     )
 
 
-@router.get("/{symbol}", response_model=List[StockDailySchema])
-def get_stock_data(
-    symbol: str,
-    limit: int = 100,
-    db: Session = Depends(get_db)
-) -> Any:
-    """
-    Get daily data for a specific stock symbol.
-    """
-    data = db.query(StockDaily).filter(StockDaily.symbol == symbol).order_by(
-        StockDaily.trade_date.desc()
-    ).limit(limit).all()
-    if not data:
-        raise HTTPException(status_code=404, detail="Data not found")
-    return data
-
-
 @router.post("/batch", response_model=BatchFetchResponse)
 def batch_fetch_stocks(
     request: BatchFetchRequest,
@@ -400,7 +383,7 @@ def get_stock_list(
             "code": s.code,
             "name": s.name,
             "exchange": s.exchange,
-            "status": s.status.value if s.status else None,
+            "status": s.status if hasattr(s, 'status') and s.status else 'active',
             "listing_date": s.listing_date.isoformat() if s.listing_date else None
         }
         for s in stocks
@@ -430,3 +413,20 @@ def sync_stock_list(
         "status": "failed",
         "message": result.get("message", "Unknown error")
     }
+
+
+@router.get("/{symbol}", response_model=List[StockDailySchema])
+def get_stock_data(
+    symbol: str,
+    limit: int = 100,
+    db: Session = Depends(get_db)
+) -> Any:
+    """
+    Get daily data for a specific stock symbol.
+    """
+    data = db.query(StockDaily).filter(StockDaily.symbol == symbol).order_by(
+        StockDaily.trade_date.desc()
+    ).limit(limit).all()
+    if not data:
+        raise HTTPException(status_code=404, detail="Data not found")
+    return data

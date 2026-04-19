@@ -111,7 +111,9 @@ export const StrategyPage: React.FC = () => {
   // 运行回测（从保存的策略）
   const handleRunBacktest = async (strategy: Strategy) => {
     try {
-      const response = await fetch(`${API_URL}/strategy/${strategy.id}/backtest?symbol=${backtestSymbol}&initial_capital=${backtestCapital}`);
+      const response = await fetch(`${API_URL}/strategy/${strategy.id}/backtest?symbol=${backtestSymbol}&initial_capital=${backtestCapital}`, {
+        method: 'POST',
+      });
       if (!response.ok) {
         const err = await response.json();
         throw new Error(err.detail || '回测失败');

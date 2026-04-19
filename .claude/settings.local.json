@@ -29,7 +29,12 @@
       "Bash(venv/bin/pip:*)",
       "Bash(venv/bin/python3:*)",
       "Bash(pkill:*)",
-      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwiZXhwIjoxNzc2NTY1MjM1LCJ0eXBlIjoiYWNjZXNzIn0.d-oHvgQuZB4VYlQHFgYusZS7n5qtGV1hKmpGak3SwI8\")"
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwiZXhwIjoxNzc2NTY1MjM1LCJ0eXBlIjoiYWNjZXNzIn0.d-oHvgQuZB4VYlQHFgYusZS7n5qtGV1hKmpGak3SwI8\")",
+      "mcp__MiniMax__web_search",
+      "WebFetch(domain:platform.minimaxi.com)",
+      "Bash(__NEW_LINE_c580eaf81951b447__ echo -e \"\\\\n\\\\n2. /v1/chat/completions:\")",
+      "Bash(__NEW_LINE_d89fd35312aea5c3__ echo -e \"\\\\n\\\\n3. /anthropic/messages:\")",
+      "Bash(/Users/joey/KLineAI/venv/bin/pip show python-dotenv)"
     ]
   }
 }

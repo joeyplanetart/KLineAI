@@ -1,5 +1,10 @@
 from pydantic_settings import BaseSettings
 from datetime import timedelta
+import os
+from dotenv import load_dotenv
+
+# Load .env file explicitly
+load_dotenv()
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "KLineAI Quantitative Trading System"
@@ -14,6 +19,8 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
 
     OPENAI_API_KEY: str = ""
+    MINIMAX_API_KEY: str = ""
+    MINIMAX_BASE_URL: str = "https://api.minimax.chat/v1"
 
     TUSHARE_TOKEN: str = ""  # 可选，Tushare API Token
 

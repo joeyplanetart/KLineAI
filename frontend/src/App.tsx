@@ -9,6 +9,7 @@ import { StrategyPage } from './pages/strategy';
 import { LoginPage } from './pages/login';
 import { RegisterPage } from './pages/register';
 import { AdminPage } from './pages/admin';
+import { UsagePage } from './pages/usage';
 import { NotFound } from './components/NotFound';
 
 const App: React.FC = () => {
@@ -47,6 +48,17 @@ const App: React.FC = () => {
                 <ProtectedRoute adminOnly>
                   <Layout>
                     <AdminPage />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/usage"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <UsagePage />
                   </Layout>
                 </ProtectedRoute>
               }

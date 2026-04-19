@@ -14,6 +14,7 @@ class StrategyRequest(BaseModel):
 
 class StrategyResponse(BaseModel):
     code: str
+    usage: Optional[Dict[str, Any]] = None
 
 class BacktestRequest(BaseModel):
     symbol: str
@@ -42,8 +43,8 @@ def generate_strategy(request: StrategyRequest):
     """
     Generate trading strategy code based on natural language description using LLM.
     """
-    generated_code = llm_service.generate_strategy_code(request.description)
-    return StrategyResponse(code=generated_code)
+    result = llm_service.generate_strategy_code(request.description)
+    return StrategyResponse(code=result["code"], usage=result.get("usage"))
 
 
 @router.post("/backtest", response_model=BacktestResponse)

@@ -24,6 +24,21 @@ class Settings(BaseSettings):
 
     TUSHARE_TOKEN: str = ""  # 可选，Tushare API Token
 
+    # Redis TTL 配置
+    REDIS_CACHE_TTL_REALTIME: int = 30
+    REDIS_CACHE_TTL_DAILY: int = 300
+    REDIS_CACHE_TTL_STOCK_LIST: int = 3600
+
+    # 批量采集配置
+    BATCH_SIZE: int = 100
+    RATE_LIMIT_DELAY: float = 0.1
+    MAX_RETRIES: int = 3
+
+    # 数据校验阈值
+    MAX_PCT_CHANGE: float = 20.0
+    MAX_AMPLITUDE: float = 25.0
+    MIN_PRICE: float = 0.01
+
     # JWT 配置
     SECRET_KEY: str = "klineai-super-secret-key-change-in-production"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30

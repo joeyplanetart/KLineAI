@@ -1,7 +1,10 @@
 import pandas as pd
 from sqlalchemy.orm import Session
 from app.models.stock import StockDaily
+from app.models.data_quality import DataQualityLog, AnomalyType
 from app.services.data_source_manager import data_source_manager
+from app.services.data_validator.validators import DataValidator
+from app.core.config import settings
 
 
 def fetch_and_save_daily_data(
@@ -9,21 +12,30 @@ def fetch_and_save_daily_data(
     symbol: str,
     start_date: str,
     end_date: str,
-    source: str = "auto"
+    source: str = "auto",
+    validate: bool = True
 ) -> dict:
     """
     Fetch daily k-line data and save to database.
     start_date, end_date format: 'YYYYMMDD'
     source: 'auto', 'baostock', 'akshare', or 'tushare'
+    validate: whether to run data validation
     """
     result = {
         "success": False,
         "message": "",
         "records_count": 0,
+        "validated_count": 0,
+        "anomaly_count": 0,
         "source": source
     }
 
     tried_sources = []
+    validator = DataValidator(
+        max_pct_change=settings.MAX_PCT_CHANGE,
+        max_amplitude=settings.MAX_AMPLITUDE,
+        min_price=settings.MIN_PRICE
+    ) if validate else None
 
     try:
         # 设置数据源偏好
@@ -46,6 +58,41 @@ def fetch_and_save_daily_data(
             elif hasattr(trade_date, 'date'):
                 trade_date = trade_date.date()
 
+            # 准备原始数据用于校验
+            raw_data = {
+                "symbol": symbol,
+                "trade_date": trade_date,
+                "open": row.get("open", 0),
+                "close": row.get("close", 0),
+                "high": row.get("high", 0),
+                "low": row.get("low", 0),
+                "volume": int(row.get("volume", 0)) if row.get("volume") else 0,
+                "amount": row.get("amount", 0),
+                "change_amount": row.get("change_amount", 0.0),
+                "pct_change": row.get("pct_change", 0.0),
+                "turnover_rate": row.get("turnover_rate", 0.0),
+                "amplitude": row.get("amplitude", 0.0),
+            }
+
+            # 数据校验
+            has_anomaly = False
+            anomaly_details = None
+            anomaly_records = []
+
+            if validator:
+                validation_results = validator.validate(raw_data)
+                critical_errors = validator.get_critical_errors(raw_data)
+
+                if critical_errors:
+                    # 记录严重错误到数据质量日志
+                    for vr in critical_errors:
+                        _log_anomaly(db, symbol, trade_date, vr)
+                        anomaly_records.append(vr.message)
+                        has_anomaly = True
+
+                if validation_results:
+                    result["validated_count"] += 1
+
             record = StockDaily(
                 symbol=symbol,
                 name="",
@@ -54,16 +101,22 @@ def fetch_and_save_daily_data(
                 close=row.get("close", 0),
                 high=row.get("high", 0),
                 low=row.get("low", 0),
-                volume=int(row.get("volume", 0)),
+                volume=int(row.get("volume", 0)) if row.get("volume") else 0,
                 amount=row.get("amount", 0),
                 change_amount=row.get("change_amount", 0.0),
                 pct_change=row.get("pct_change", 0.0),
                 turnover_rate=row.get("turnover_rate", 0.0),
                 amplitude=row.get("amplitude", 0.0),
                 pe=0.0,
-                pb=0.0
+                pb=0.0,
+                is_validated=validate,
+                has_anomaly=has_anomaly,
+                anomaly_details={"anomalies": anomaly_records} if anomaly_records else None
             )
             records.append(record)
+
+            if has_anomaly:
+                result["anomaly_count"] += 1
 
         # 插入数据库
         for record in records:
@@ -91,10 +144,10 @@ def fetch_and_save_daily_data(
             tried_sources.append(data_source_manager.current_source.get_name())
             if "baostock" not in tried_sources:
                 result["message"] = f"BaoStock failed: {error_msg}, trying AKShare..."
-                return fetch_and_save_daily_data(db, symbol, start_date, end_date, "akshare")
+                return fetch_and_save_daily_data(db, symbol, start_date, end_date, "akshare", validate)
             elif "akshare" not in tried_sources:
                 result["message"] = f"AKShare failed: {error_msg}, trying Tushare..."
-                return fetch_and_save_daily_data(db, symbol, start_date, end_date, "tushare")
+                return fetch_and_save_daily_data(db, symbol, start_date, end_date, "tushare", validate)
 
         result["message"] = error_msg
         print(f"Error fetching/saving data for {symbol}: {e}")
@@ -105,3 +158,27 @@ def fetch_and_save_daily_data(
         print(f"Error fetching/saving data for {symbol}: {e}")
 
     return result
+
+
+def _log_anomaly(
+    db: Session,
+    symbol: str,
+    trade_date,
+    validation_result
+) -> DataQualityLog:
+    """Log a data quality anomaly to the database"""
+    log = DataQualityLog(
+        symbol=symbol,
+        trade_date=trade_date,
+        anomaly_type=validation_result.anomaly_type,
+        field_name=validation_result.field_name,
+        actual_value=validation_result.actual_value,
+        expected_value=validation_result.expected_value,
+        details={
+            "message": validation_result.message,
+            "level": validation_result.level.value,
+            "extra": validation_result.details
+        }
+    )
+    db.add(log)
+    return log

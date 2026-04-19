@@ -21,7 +21,15 @@ import {
   Paper,
   IconButton,
   Tooltip,
-  Badge,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Snackbar,
 } from '@mui/material';
 import {
   CloudDone as CloudDoneIcon,
@@ -32,6 +40,11 @@ import {
   Warning as WarningIcon,
   CheckCircle as CheckCircleIcon,
   PlayCircle as PlayCircleIcon,
+  Settings as SettingsIcon,
+  Schedule as ScheduleIcon,
+  Edit as EditIcon,
+  Save as SaveIcon,
+  PlayArrow as PlayArrowIcon,
 } from '@mui/icons-material';
 
 const API_URL = 'http://localhost:8000/api/v1';
@@ -80,6 +93,28 @@ interface DataQualityAnomaly {
   resolved: boolean;
 }
 
+interface ConfigItem {
+  key: string;
+  value: any;
+  default: any;
+  description: string;
+  category: string;
+  is_secret: boolean;
+  value_type: string;
+}
+
+interface TaskInfo {
+  task_name: string;
+  display_name: string;
+  description: string;
+  queue: string;
+  schedule: string;
+  category: string;
+  last_run: string | null;
+  last_status: string | null;
+  is_enabled: boolean;
+}
+
 export const DataManagementPage: React.FC = () => {
   const [tabValue, setTabValue] = useState(0);
   const [dataSources, setDataSources] = useState<DataSource[]>([]);
@@ -96,6 +131,21 @@ export const DataManagementPage: React.FC = () => {
   const [batchEndDate, setBatchEndDate] = useState('20240419');
   const [batchResult, setBatchResult] = useState<any>(null);
   const [batchLoading, setBatchLoading] = useState(false);
+
+  // Config states
+  const [configs, setConfigs] = useState<ConfigItem[]>([]);
+  const [configCategories, setConfigCategories] = useState<string[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingConfig, setEditingConfig] = useState<ConfigItem | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({ open: false, message: '', severity: 'success' });
+
+  // Task states
+  const [tasks, setTasks] = useState<TaskInfo[]>([]);
+  const [taskLoading, setTaskLoading] = useState(false);
+  const [executingTask, setExecutingTask] = useState<string | null>(null);
+  const [recentExecutions, setRecentExecutions] = useState<any[]>([]);
 
   // Fetch data sources
   const fetchDataSources = async () => {
@@ -188,14 +238,132 @@ export const DataManagementPage: React.FC = () => {
     }
   };
 
+  // Config functions
+  const fetchConfigs = async () => {
+    try {
+      const response = await fetch(`${API_URL}/config`);
+      if (response.ok) {
+        const data = await response.json();
+        setConfigs(data.items);
+        setConfigCategories(data.categories);
+      }
+    } catch (err) {
+      console.error('Failed to fetch configs:', err);
+    }
+  };
+
+  const handleEditConfig = (config: ConfigItem) => {
+    setEditingConfig(config);
+    setEditValue(config.value);
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveConfig = async () => {
+    if (!editingConfig) return;
+
+    try {
+      const response = await fetch(`${API_URL}/config/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          key: editingConfig.key,
+          value: editingConfig.value_type === 'number' ? Number(editValue) : editValue
+        })
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        setSnackbar({ open: true, message: `配置 ${editingConfig.key} 已更新 (临时生效，重启后失效)`, severity: 'success' });
+        fetchConfigs();
+      } else {
+        setSnackbar({ open: true, message: result.message || '更新失败', severity: 'error' });
+      }
+    } catch (err) {
+      setSnackbar({ open: true, message: '更新失败: ' + (err instanceof Error ? err.message : 'Unknown error'), severity: 'error' });
+    }
+
+    setEditDialogOpen(false);
+  };
+
+  // Task functions
+  const fetchTasks = async () => {
+    setTaskLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/tasks/`);
+      if (response.ok) {
+        const data = await response.json();
+        setTasks(data.tasks);
+      }
+    } catch (err) {
+      console.error('Failed to fetch tasks:', err);
+    } finally {
+      setTaskLoading(false);
+    }
+  };
+
+  const fetchRecentExecutions = async () => {
+    try {
+      const response = await fetch(`${API_URL}/tasks/executions/recent`);
+      if (response.ok) {
+        const data = await response.json();
+        setRecentExecutions(data.executions || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch recent executions:', err);
+    }
+  };
+
+  const handleExecuteTask = async (taskName: string) => {
+    setExecutingTask(taskName);
+    try {
+      const response = await fetch(`${API_URL}/tasks/execute`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ task_name: taskName })
+      });
+      const result = await response.json();
+      if (result.success) {
+        setSnackbar({ open: true, message: `任务已触发: ${result.message}`, severity: 'success' });
+        fetchRecentExecutions();
+      } else {
+        setSnackbar({ open: true, message: result.message || '执行失败', severity: 'error' });
+      }
+    } catch (err) {
+      setSnackbar({ open: true, message: '执行失败: ' + (err instanceof Error ? err.message : 'Unknown error'), severity: 'error' });
+    } finally {
+      setExecutingTask(null);
+    }
+  };
+
   useEffect(() => {
     fetchDataSources();
     fetchStockList();
     fetchDataQuality();
+    fetchConfigs();
+    fetchTasks();
+    fetchRecentExecutions();
   }, []);
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
+  };
+
+  const filteredConfigs = selectedCategory === 'all'
+    ? configs
+    : configs.filter(c => c.category === selectedCategory);
+
+  const getTaskStatusChip = (status: string | null) => {
+    switch (status) {
+      case 'SUCCESS':
+        return <Chip label="成功" color="success" size="small" />;
+      case 'FAILURE':
+        return <Chip label="失败" color="error" size="small" />;
+      case 'PENDING':
+      case 'STARTED':
+        return <Chip label="执行中" color="info" size="small" />;
+      default:
+        return <Chip label="未执行" size="small" />;
+    }
   };
 
   return (
@@ -209,6 +377,8 @@ export const DataManagementPage: React.FC = () => {
         <Tab label="股票列表" />
         <Tab label="数据质量" />
         <Tab label="批量采集" />
+        <Tab label="配置管理" />
+        <Tab label="任务调度" />
       </Tabs>
 
       {/* 数据源状态 */}
@@ -217,15 +387,10 @@ export const DataManagementPage: React.FC = () => {
           <CardContent>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
               <Typography variant="h6">数据源状态</Typography>
-              <Button
-                startIcon={<RefreshIcon />}
-                onClick={fetchDataSources}
-                disabled={loading}
-              >
+              <Button startIcon={<RefreshIcon />} onClick={fetchDataSources} disabled={loading}>
                 刷新
               </Button>
             </Box>
-
             {loading ? (
               <CircularProgress />
             ) : (
@@ -278,13 +443,11 @@ export const DataManagementPage: React.FC = () => {
                 {syncing ? '同步中...' : '同步股票列表'}
               </Button>
             </Box>
-
             {syncMessage && (
               <Alert severity="info" sx={{ mb: 2 }}>
                 {syncMessage}
               </Alert>
             )}
-
             <TableContainer component={Paper}>
               <Table size="small">
                 <TableHead>
@@ -332,7 +495,6 @@ export const DataManagementPage: React.FC = () => {
                 刷新
               </Button>
             </Box>
-
             {qualitySummary && (
               <Stack direction="row" spacing={2} flexWrap="wrap">
                 {Object.entries(qualitySummary.anomalies_by_type || {}).map(([type, count]) => (
@@ -355,7 +517,6 @@ export const DataManagementPage: React.FC = () => {
             )}
           </CardContent>
         </Card>
-
         <Card>
           <CardContent>
             <Typography variant="h6" gutterBottom>异常记录</Typography>
@@ -392,9 +553,7 @@ export const DataManagementPage: React.FC = () => {
                   ))}
                   {anomalies.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={7} align="center">
-                        暂无异常记录
-                      </TableCell>
+                      <TableCell colSpan={7} align="center">暂无异常记录</TableCell>
                     </TableRow>
                   )}
                 </TableBody>
@@ -409,7 +568,6 @@ export const DataManagementPage: React.FC = () => {
         <Card>
           <CardContent>
             <Typography variant="h6" gutterBottom>批量采集股票数据</Typography>
-
             <Stack spacing={2} sx={{ mb: 3 }}>
               <TextField
                 label="股票代码列表"
@@ -444,24 +602,217 @@ export const DataManagementPage: React.FC = () => {
                 {batchLoading ? '采集中...' : '开始采集'}
               </Button>
             </Stack>
-
             {batchResult && (
-              <Alert
-                severity={batchResult.failed > 0 ? 'warning' : 'success'}
-                sx={{ mt: 2 }}
-              >
+              <Alert severity={batchResult.failed > 0 ? 'warning' : 'success'} sx={{ mt: 2 }}>
                 {batchResult.message}
               </Alert>
             )}
-
             <Typography variant="body2" color="textSecondary" sx={{ mt: 2 }}>
               <StorageIcon sx={{ fontSize: 16, verticalAlign: 'middle', mr: 0.5 }} />
               批量采集会为每个股票创建分布式锁，防止重复采集。
-              采集结果可通过行情概览页面查看。
             </Typography>
           </CardContent>
         </Card>
       </TabPanel>
+
+      {/* 配置管理 */}
+      <TabPanel value={tabValue} index={4}>
+        <Card>
+          <CardContent>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6">系统配置</Typography>
+              <Stack direction="row" spacing={1}>
+                <FormControl size="small" sx={{ minWidth: 150 }}>
+                  <InputLabel>分类</InputLabel>
+                  <Select
+                    value={selectedCategory}
+                    label="分类"
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                  >
+                    <MenuItem value="all">全部</MenuItem>
+                    {configCategories.map(cat => (
+                      <MenuItem key={cat} value={cat}>{cat}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <Button startIcon={<RefreshIcon />} onClick={fetchConfigs}>
+                  刷新
+                </Button>
+              </Stack>
+            </Box>
+            <Alert severity="info" sx={{ mb: 2 }}>
+              注意：这里的修改是临时生效的，重启服务后会恢复为默认值。如需永久修改，请编辑 .env 文件。
+            </Alert>
+            <TableContainer component={Paper}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>配置项</TableCell>
+                    <TableCell>当前值</TableCell>
+                    <TableCell>默认值</TableCell>
+                    <TableCell>描述</TableCell>
+                    <TableCell>操作</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {filteredConfigs.map((config) => (
+                    <TableRow key={config.key}>
+                      <TableCell sx={{ fontFamily: 'monospace' }}>{config.key}</TableCell>
+                      <TableCell sx={{ fontFamily: 'monospace', maxWidth: 200 }}>
+                        {config.is_secret ? config.value : config.value}
+                      </TableCell>
+                      <TableCell sx={{ fontFamily: 'monospace' }}>{config.default}</TableCell>
+                      <TableCell>{config.description}</TableCell>
+                      <TableCell>
+                        <IconButton size="small" onClick={() => handleEditConfig(config)}>
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </CardContent>
+        </Card>
+      </TabPanel>
+
+      {/* 任务调度 */}
+      <TabPanel value={tabValue} index={5}>
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6">定时任务</Typography>
+              <Button startIcon={<RefreshIcon />} onClick={() => { fetchTasks(); fetchRecentExecutions(); }}>
+                刷新
+              </Button>
+            </Box>
+            {taskLoading ? (
+              <CircularProgress />
+            ) : (
+              <TableContainer component={Paper}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>任务名称</TableCell>
+                      <TableCell>调度周期</TableCell>
+                      <TableCell>队列</TableCell>
+                      <TableCell>上次执行</TableCell>
+                      <TableCell>状态</TableCell>
+                      <TableCell>操作</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {tasks.map((task) => (
+                      <TableRow key={task.task_name}>
+                        <TableCell>
+                          <Typography variant="body2" fontWeight="bold">{task.display_name}</Typography>
+                          <Typography variant="caption" color="textSecondary">{task.task_name}</Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Chip icon={<ScheduleIcon />} label={task.schedule} size="small" variant="outlined" />
+                        </TableCell>
+                        <TableCell>{task.queue}</TableCell>
+                        <TableCell>{task.last_run || '-'}</TableCell>
+                        <TableCell>{getTaskStatusChip(task.last_status)}</TableCell>
+                        <TableCell>
+                          <Button
+                            size="small"
+                            startIcon={executingTask === task.task_name ? <CircularProgress size={16} /> : <PlayArrowIcon />}
+                            onClick={() => handleExecuteTask(task.task_name)}
+                            disabled={executingTask === task.task_name}
+                          >
+                            执行
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent>
+            <Typography variant="h6" gutterBottom>最近执行记录</Typography>
+            <TableContainer component={Paper}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>任务</TableCell>
+                    <TableCell>执行ID</TableCell>
+                    <TableCell>状态</TableCell>
+                    <TableCell>完成时间</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {recentExecutions.slice(0, 10).map((exec, idx) => (
+                    <TableRow key={idx}>
+                      <TableCell>{exec.display_name || exec.task_name}</TableCell>
+                      <TableCell sx={{ fontFamily: 'monospace', fontSize: 12 }}>{exec.task_id}</TableCell>
+                      <TableCell>{getTaskStatusChip(exec.status)}</TableCell>
+                      <TableCell>{exec.date_done || '-'}</TableCell>
+                    </TableRow>
+                  ))}
+                  {recentExecutions.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={4} align="center">暂无执行记录</TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </CardContent>
+        </Card>
+      </TabPanel>
+
+      {/* Edit Config Dialog */}
+      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>编辑配置</DialogTitle>
+        <DialogContent>
+          {editingConfig && (
+            <Stack spacing={2} sx={{ mt: 1 }}>
+              <Typography variant="body2">
+                <strong>配置项:</strong> {editingConfig.key}
+              </Typography>
+              <Typography variant="body2" color="textSecondary">
+                {editingConfig.description}
+              </Typography>
+              <TextField
+                label="值"
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                type={editingConfig.value_type === 'number' ? 'number' : 'text'}
+                fullWidth
+                disabled={editingConfig.is_secret}
+              />
+              <Alert severity="warning">
+                此修改仅在当前服务运行期间有效，重启后会恢复为默认值。
+              </Alert>
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditDialogOpen(false)}>取消</Button>
+          <Button onClick={handleSaveConfig} variant="contained" startIcon={<SaveIcon />}>
+            保存
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Snackbar */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity={snackbar.severity} onClose={() => setSnackbar({ ...snackbar, open: false })}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

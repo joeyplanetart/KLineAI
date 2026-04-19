@@ -273,7 +273,7 @@ export const DataManagementPage: React.FC = () => {
 
       const result = await response.json();
       if (result.success) {
-        setSnackbar({ open: true, message: `配置 ${editingConfig.key} 已更新 (临时生效，重启后失效)`, severity: 'success' });
+        setSnackbar({ open: true, message: `配置 ${editingConfig.key} 已更新（临时生效，仅当前会话有效）`, severity: 'success' });
         fetchConfigs();
       } else {
         setSnackbar({ open: true, message: result.message || '更新失败', severity: 'error' });
@@ -641,7 +641,7 @@ export const DataManagementPage: React.FC = () => {
               </Stack>
             </Box>
             <Alert severity="info" sx={{ mb: 2 }}>
-              注意：这里的修改是临时生效的，重启服务后会恢复为默认值。如需永久修改，请编辑 .env 文件。
+              注意：敏感配置（数据库、API密钥等）不在此管理，请通过 .env 文件修改。此处仅管理数据采集、缓存和数据校验相关的应用设置。
             </Alert>
             <TableContainer component={Paper}>
               <Table size="small">
@@ -789,7 +789,7 @@ export const DataManagementPage: React.FC = () => {
                 disabled={editingConfig.is_secret}
               />
               <Alert severity="warning">
-                此修改仅在当前服务运行期间有效，重启后会恢复为默认值。
+                此修改仅在当前服务运行期间有效，重启后会恢复为默认值。如需永久修改，请编辑 .env 文件。
               </Alert>
             </Stack>
           )}

@@ -4,7 +4,7 @@ from typing import List, Any, Optional
 from app.core.db import get_db
 from app.models.stock import StockDaily
 from app.models.data_quality import DataQualityLog
-from app.models.stock_info import StockInfo as StockInfoModel
+from app.models.stock_info import StockInfo as StockInfoModel, StockStatus
 from app.services.data_fetcher import fetch_and_save_daily_data
 from app.services.data_source_manager import data_source_manager
 from app.services.data_collector.batch_collector import BatchCollector
@@ -171,11 +171,23 @@ def search_stocks(q: str, limit: int = 10):
     return results
 
 
+def _get_last_trading_day() -> str:
+    """获取最近一个交易日（工作日）"""
+    from datetime import datetime, timedelta
+    today = datetime.now().date()
+    # 向前查找最近的交易日（周一到周五）
+    for i in range(7):
+        check_date = today - timedelta(days=i)
+        if check_date.weekday() < 5:  # Monday=0, Friday=4
+            return check_date.strftime("%Y%m%d")
+    return today.strftime("%Y%m%d")
+
+
 @router.post("/fetch/{symbol}")
 def trigger_data_fetch(
     symbol: str,
-    start_date: str,
-    end_date: str,
+    start_date: str = None,
+    end_date: str = None,
     source: Optional[str] = "auto",
     adjust: Optional[str] = "qfq",
     background_tasks: BackgroundTasks = None,
@@ -183,7 +195,9 @@ def trigger_data_fetch(
 ) -> FetchResponse:
     """
     Trigger a background task to fetch data for a specific symbol.
+
     start_date and end_date format: YYYYMMDD
+    If not provided, defaults to the most recent trading day.
 
     source: 'auto' (default, try BaoStock first, fallback to AKShare),
             'baostock' (force BaoStock),
@@ -193,6 +207,12 @@ def trigger_data_fetch(
     adjust: 'qfq' (前复权, default), 'hfq' (后复权), '3' (不复权)
             注意：仅 BaoStock 和 Tushare 支持此参数
     """
+    # 如果没有提供日期，默认获取最近一个交易日
+    if not end_date:
+        end_date = _get_last_trading_day()
+    if not start_date:
+        start_date = end_date
+
     result = fetch_and_save_daily_data(db, symbol, start_date, end_date, source, adjust=adjust)
     return FetchResponse(
         message=result["message"],
@@ -212,9 +232,10 @@ def batch_fetch_stocks(
 
     Request body:
     - symbols: List of stock symbols (e.g., ["sh600000", "sz000001"])
-    - start_date: Start date in YYYYMMDD format
-    - end_date: End date in YYYYMMDD format
+    - start_date: Start date in YYYYMMDD format (optional, defaults to most recent trading day)
+    - end_date: End date in YYYYMMDD format (optional, defaults to most recent trading day)
     - source: Data source to use (default: baostock)
+    - adjust: 'qfq' (前复权), 'hfq' (后复权), '3' (不复权)
     """
     collector = BatchCollector()
 
@@ -222,11 +243,15 @@ def batch_fetch_stocks(
     if len(request.symbols) > 100:
         raise HTTPException(status_code=400, detail="Batch size exceeds 100 symbols")
 
+    # Default dates to most recent trading day if not provided
+    end_date = request.end_date or _get_last_trading_day()
+    start_date = request.start_date or end_date
+
     result = collector.batch_fetch(
         db,
         request.symbols,
-        request.start_date,
-        request.end_date,
+        start_date,
+        end_date,
         request.source,
         adjust=request.adjust
     )
@@ -479,6 +504,71 @@ def sync_stock_list(
     return {
         "status": "failed",
         "message": result.get("message", "Unknown error")
+    }
+
+
+@router.post("/fetch-today")
+def fetch_today_data(
+    source: Optional[str] = "baostock",
+    adjust: Optional[str] = "qfq",
+    db: Session = Depends(get_db)
+):
+    """
+    Fetch the most recent trading day's data for all stocks in the database.
+    This is used for daily market close data updates.
+
+    source: Data source to use (default: baostock)
+    adjust: 'qfq' (前复权, default), 'hfq' (后复权), '3' (不复权)
+    """
+    from datetime import datetime
+
+    trading_day = _get_last_trading_day()
+
+    # Get all active stock symbols from database
+    stocks = db.query(StockInfoModel).filter(
+        StockInfoModel.status == StockStatus.ACTIVE
+    ).all()
+
+    symbols = [s.symbol for s in stocks]
+    total = len(symbols)
+
+    if total == 0:
+        return {
+            "status": "skipped",
+            "message": "No active stocks found",
+            "trading_day": trading_day,
+            "total": 0,
+            "success": 0,
+            "failed": 0
+        }
+
+    # Limit to prevent overload - fetch in background for large batches
+    if total > 100:
+        return {
+            "status": "too_many",
+            "message": f"Too many stocks ({total}). Use batch endpoint with smaller batches.",
+            "trading_day": trading_day,
+            "total": total,
+            "suggestion": "Use /api/v1/market/batch with paginated symbols"
+        }
+
+    # Batch fetch
+    collector = BatchCollector()
+    result = collector.batch_fetch(
+        db,
+        symbols,
+        trading_day,
+        trading_day,
+        source,
+        adjust=adjust
+    )
+
+    return {
+        "status": "completed",
+        "trading_day": trading_day,
+        "total": result["total"],
+        "success": result["success"],
+        "failed": result["failed"]
     }
 
 

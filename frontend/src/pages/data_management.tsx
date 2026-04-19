@@ -32,6 +32,8 @@ import {
   Snackbar,
   Pagination,
   InputAdornment,
+  LinearProgress,
+  Divider,
 } from '@mui/material';
 import {
   CloudDone as CloudDoneIcon,
@@ -154,6 +156,10 @@ export const DataManagementPage: React.FC = () => {
   const [batchResult, setBatchResult] = useState<any>(null);
   const [batchLoading, setBatchLoading] = useState(false);
 
+  // Batch job tracking states
+  const [batchJobId, setBatchJobId] = useState<string | null>(null);
+  const [batchJobStatus, setBatchJobStatus] = useState<any>(null);
+
   // Config states
   const [configs, setConfigs] = useState<ConfigItem[]>([]);
   const [configCategories, setConfigCategories] = useState<string[]>([]);
@@ -274,6 +280,91 @@ export const DataManagementPage: React.FC = () => {
     } finally {
       setBatchLoading(false);
     }
+  };
+
+  // Batch all A-shares with progress tracking
+  const handleBatchAll = async () => {
+    setBatchLoading(true);
+    setBatchResult(null);
+    setBatchJobStatus(null);
+    try {
+      // Calculate last trading day
+      const today = new Date();
+      let lastTradingDay = new Date(today);
+      for (let i = 0; i < 7; i++) {
+        lastTradingDay = new Date(today);
+        lastTradingDay.setDate(today.getDate() - i);
+        if (lastTradingDay.getDay() !== 0 && lastTradingDay.getDay() !== 6) break;
+      }
+      const tradingDay = lastTradingDay.toISOString().slice(0, 10).replace(/-/g, '');
+
+      const response = await fetch(`${API_URL}/market/batch-all`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          symbols: [],
+          start_date: tradingDay,
+          end_date: tradingDay,
+          source: 'baostock'
+        })
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.detail || '启动批量采集失败');
+      }
+
+      setBatchJobId(result.job_id);
+      setBatchJobStatus({
+        status: 'started',
+        total: result.total,
+        current: 0,
+        success: 0,
+        failed: 0,
+        progress: 0
+      });
+
+      // Start polling for status
+      pollBatchJobStatus(result.job_id);
+
+    } catch (err) {
+      setBatchResult({ message: '启动批量采集失败: ' + (err instanceof Error ? err.message : 'Unknown error'), success: 0, failed: 0 });
+      setBatchLoading(false);
+    }
+  };
+
+  // Poll batch job status
+  const pollBatchJobStatus = (jobId: string) => {
+    const pollInterval = setInterval(async () => {
+      try {
+        const response = await fetch(`${API_URL}/market/batch-all/${jobId}/status`);
+        const status = await response.json();
+
+        setBatchJobStatus(status);
+
+        if (status.status === 'completed' || status.status === 'failed') {
+          clearInterval(pollInterval);
+          setBatchLoading(false);
+          if (status.status === 'completed') {
+            setBatchResult({
+              message: `采集全部A股完成: ${status.success}/${status.total} 成功`,
+              success: status.success,
+              failed: status.failed,
+              total: status.total
+            });
+          } else {
+            setBatchResult({
+              message: `采集失败: ${status.error}`,
+              success: status.success,
+              failed: status.failed
+            });
+          }
+        }
+      } catch (err) {
+        console.error('Failed to poll batch job status:', err);
+        clearInterval(pollInterval);
+        setBatchLoading(false);
+      }
+    }, 2000); // Poll every 2 seconds
   };
 
   // Config functions
@@ -664,12 +755,69 @@ export const DataManagementPage: React.FC = () => {
         <Card>
           <CardContent>
             <Typography variant="h6" gutterBottom>批量采集股票数据</Typography>
+
+            {/* 采集全部A股区域 */}
+            <Card variant="outlined" sx={{ mb: 3, bgcolor: 'grey.50' }}>
+              <CardContent>
+                <Typography variant="subtitle1" gutterBottom>
+                  一键采集全部A股
+                </Typography>
+                <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+                  自动从数据库获取全部5500+只A股，分批采集并显示进度
+                </Typography>
+
+                {/* 进度条 */}
+                {batchJobStatus && batchJobStatus.status === 'running' && (
+                  <Box sx={{ mb: 2 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                      <Typography variant="body2">
+                        采集中... {batchJobStatus.current}/{batchJobStatus.total} 只
+                      </Typography>
+                      <Typography variant="body2" color="primary">
+                        {batchJobStatus.progress}%
+                      </Typography>
+                    </Box>
+                    <LinearProgress
+                      variant="determinate"
+                      value={batchJobStatus.progress}
+                      sx={{ height: 10, borderRadius: 5 }}
+                    />
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
+                      <Typography variant="caption" color="success">
+                        成功: {batchJobStatus.success}
+                      </Typography>
+                      <Typography variant="caption" color="error">
+                        失败: {batchJobStatus.failed}
+                      </Typography>
+                    </Box>
+                  </Box>
+                )}
+
+                <Stack direction="row" spacing={2}>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    startIcon={batchLoading ? <CircularProgress size={20} color="inherit" /> : <PlayCircleIcon />}
+                    onClick={handleBatchAll}
+                    disabled={batchLoading}
+                  >
+                    {batchLoading && batchJobStatus?.status === 'running' ? '采集中...' : '采集全部A股'}
+                  </Button>
+                </Stack>
+              </CardContent>
+            </Card>
+
+            <Divider sx={{ my: 3 }} />
+
+            <Typography variant="subtitle1" gutterBottom>
+              自定义批量采集
+            </Typography>
             <Stack spacing={2} sx={{ mb: 3 }}>
               <TextField
                 label="股票代码列表"
                 value={batchSymbols}
                 onChange={(e) => setBatchSymbols(e.target.value)}
-                helperText="留空表示采集全部A股；多个代码用逗号分隔，如：sh600000, sz000001"
+                helperText="多个代码用逗号分隔，如：sh600000, sz000001"
                 size="small"
               />
               <Stack direction="row" spacing={2}>
@@ -689,20 +837,19 @@ export const DataManagementPage: React.FC = () => {
               <Stack direction="row" spacing={2}>
                 <Button
                   variant="contained"
-                  startIcon={batchLoading ? <CircularProgress size={20} /> : <PlayCircleIcon />}
+                  startIcon={batchLoading && !batchJobStatus ? <CircularProgress size={20} /> : <PlayCircleIcon />}
                   onClick={handleBatchFetch}
                   disabled={batchLoading}
                 >
-                  {batchLoading ? '采集中...' : '开始采集'}
+                  开始采集
                 </Button>
                 <Button
                   variant="outlined"
                   color="primary"
-                  startIcon={batchLoading ? <CircularProgress size={20} /> : <SyncIcon />}
+                  startIcon={batchLoading && !batchJobStatus ? <CircularProgress size={20} /> : <SyncIcon />}
                   onClick={async () => {
                     setBatchLoading(true);
                     try {
-                      // Calculate last trading day
                       const today = new Date();
                       let lastTradingDay = new Date(today);
                       for (let i = 0; i < 7; i++) {

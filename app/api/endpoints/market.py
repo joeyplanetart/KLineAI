@@ -302,6 +302,93 @@ def batch_fetch_stocks(
         )
 
 
+@router.post("/batch-all")
+def batch_fetch_all(
+    request: BatchFetchRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Start a background batch fetch for all A-share stocks.
+    Returns a job_id that can be used to track progress.
+
+    Request body:
+    - start_date: Start date in YYYYMMDD format (optional, defaults to most recent trading day)
+    - end_date: End date in YYYYMMDD format (optional, defaults to most recent trading day)
+    - source: Data source to use (default: baostock)
+    - adjust: 'qfq' (前复权), 'hfq' (后复权), '3' (不复权)
+    """
+    from app.services.batch_job import batch_job_service
+
+    # Get all active A-share stocks from database
+    stocks = db.query(StockInfoModel).filter(
+        StockInfoModel.status == StockStatus.ACTIVE
+    ).all()
+    symbols = [s.symbol for s in stocks]
+
+    if not symbols:
+        return {
+            "job_id": None,
+            "status": "skipped",
+            "message": "No active stocks found",
+            "total": 0
+        }
+
+    # Default dates to most recent trading day if not provided
+    end_date = request.end_date or _get_last_trading_day()
+    start_date = request.start_date or end_date
+
+    # Start background job
+    job_id = batch_job_service.start_batch_job(
+        db=db,
+        symbols=symbols,
+        start_date=start_date,
+        end_date=end_date,
+        source=request.source,
+        adjust=request.adjust
+    )
+
+    return {
+        "job_id": job_id,
+        "status": "started",
+        "message": f"批量采集任务已启动，共 {len(symbols)} 只股票",
+        "total": len(symbols),
+        "start_date": start_date,
+        "end_date": end_date
+    }
+
+
+@router.get("/batch-all/{job_id}/status")
+def get_batch_job_status(job_id: str):
+    """
+    Get the status of a batch fetch job.
+    """
+    from app.services.batch_job import batch_job_service
+
+    job_data = batch_job_service.get_job_status(job_id)
+
+    if not job_data:
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+
+    # 计算进度百分比
+    progress = 0
+    if job_data["total"] > 0:
+        progress = int(job_data["current"] / job_data["total"] * 100)
+
+    return {
+        "job_id": job_id,
+        "status": job_data["status"],
+        "total": job_data["total"],
+        "current": job_data["current"],
+        "success": job_data["success"],
+        "failed": job_data["failed"],
+        "progress": progress,
+        "created_at": job_data.get("created_at"),
+        "started_at": job_data.get("started_at"),
+        "completed_at": job_data.get("completed_at"),
+        "error": job_data.get("error")
+    }
+
+
 @router.get("/realtime/{symbol}", response_model=RealtimeQuote)
 def get_realtime_quote(
     symbol: str,

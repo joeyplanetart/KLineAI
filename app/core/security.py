@@ -12,7 +12,7 @@ from app.models.user import User, UserRole
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 ALGORITHM = "HS256"
 
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -72,3 +72,29 @@ def get_current_admin(current_user: User = Depends(get_current_user)) -> User:
     if current_user.role != UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
     return current_user
+
+
+def get_optional_user(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    db: Session = Depends(get_db)
+) -> Optional[User]:
+    """
+    Optional authentication - returns None if no valid token provided.
+    """
+    if not credentials:
+        return None
+
+    try:
+        token = credentials.credentials
+        payload = decode_token(token)
+        if payload.get("type") != "access":
+            return None
+
+        user_id = payload.get("sub")
+        if user_id is None:
+            return None
+
+        user = db.query(User).filter(User.id == int(user_id)).first()
+        return user
+    except Exception:
+        return None

@@ -172,10 +172,13 @@ class BatchCollector:
         """
         Sync stock list from data source to database.
         Updates StockInfo table with latest listings.
+        Uses raw SQL since StockInfo model has enum that may not exist in DB.
 
         Returns:
             Summary of sync results
         """
+        from sqlalchemy import text
+
         stocks = self.collect_market_all(db)
 
         if not stocks:
@@ -183,6 +186,7 @@ class BatchCollector:
 
         added = 0
         updated = 0
+        today = datetime.utcnow().date()
 
         for stock_data in stocks:
             symbol = stock_data.get("symbol")
@@ -190,24 +194,32 @@ class BatchCollector:
             name = stock_data.get("name")
             exchange = stock_data.get("exchange", "SH" if code.startswith("6") else "SZ")
 
-            existing = db.query(StockInfo).filter(StockInfo.symbol == symbol).first()
+            # Check if exists
+            result = db.execute(
+                text("SELECT id FROM stock_info WHERE symbol = :symbol"),
+                {"symbol": symbol}
+            ).fetchone()
 
-            if existing:
+            if result:
                 # Update existing
-                existing.name = name
-                existing.exchange = exchange
-                existing.updated_at = datetime.utcnow()
+                db.execute(
+                    text("""
+                        UPDATE stock_info
+                        SET name = :name, exchange = :exchange, updated_at = :updated_at
+                        WHERE symbol = :symbol
+                    """),
+                    {"name": name, "exchange": exchange, "updated_at": today, "symbol": symbol}
+                )
                 updated += 1
             else:
-                # Add new
-                new_stock = StockInfo(
-                    symbol=symbol,
-                    code=code,
-                    name=name,
-                    exchange=exchange,
-                    status=StockStatus.ACTIVE
+                # Insert new
+                db.execute(
+                    text("""
+                        INSERT INTO stock_info (symbol, code, name, exchange, status, created_at, updated_at)
+                        VALUES (:symbol, :code, :name, :exchange, 'active', :created_at, :updated_at)
+                    """),
+                    {"symbol": symbol, "code": code, "name": name, "exchange": exchange, "created_at": today, "updated_at": today}
                 )
-                db.add(new_stock)
                 added += 1
 
         db.commit()

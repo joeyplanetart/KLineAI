@@ -6,7 +6,7 @@ import akshare as ak
 import baostock as bs
 import pandas as pd
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, List, Dict
 from app.core.config import settings
 
 
@@ -317,6 +317,36 @@ class DataSourceManager:
     ) -> pd.DataFrame:
         """使用当前数据源获取数据"""
         return self.current_source.fetch_daily(symbol, start_date, end_date)
+
+    def fetch_stock_list(self) -> List[Dict]:
+        """
+        获取全市场股票列表
+        返回格式: [{'symbol': 'sh600000', 'code': '600000', 'name': '浦发银行', 'exchange': 'SH'}, ...]
+        """
+        try:
+            # 使用 AKShare 获取股票列表
+            df = ak.stock_info_a_code_name()
+            stocks = []
+            for _, row in df.iterrows():
+                code = row['code']
+                name = row['name'].strip()
+                # 判断交易所：6开头为上海，0/3开头为深圳
+                if code.startswith('6'):
+                    exchange = 'SH'
+                    symbol = f'sh{code}'
+                else:
+                    exchange = 'SZ'
+                    symbol = f'sz{code}'
+                stocks.append({
+                    'symbol': symbol,
+                    'code': code,
+                    'name': name,
+                    'exchange': exchange
+                })
+            return stocks
+        except Exception as e:
+            print(f"Error fetching stock list: {e}")
+            raise ConnectionError(f"Failed to fetch stock list: {e}")
 
 
 # 全局单例

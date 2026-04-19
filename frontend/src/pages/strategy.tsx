@@ -422,7 +422,7 @@ export const StrategyPage: React.FC = () => {
                       </Typography>
                       <Typography
                         variant="h5"
-                        sx={{ color: backtestResult.total_return >= 0 ? '#3f8600' : '#cf1322' }}
+                        sx={{ color: backtestResult.total_return >= 0 ? '#ef0428' : '#00c853' }}
                       >
                         {backtestResult.total_return >= 0 ? '+' : ''}
                         {backtestResult.total_return}%
@@ -444,7 +444,7 @@ export const StrategyPage: React.FC = () => {
                       <Typography variant="body2" color="textSecondary">
                         最大回撤
                       </Typography>
-                      <Typography variant="h5" sx={{ color: '#cf1322' }}>
+                      <Typography variant="h5" sx={{ color: '#00c853' }}>
                         -{backtestResult.max_drawdown}%
                       </Typography>
                     </Box>
@@ -492,7 +492,7 @@ export const StrategyPage: React.FC = () => {
                           <Chip
                             size="small"
                             label={trade.action}
-                            color={trade.action === 'BUY' ? 'success' : 'error'}
+                            color={trade.action === 'BUY' ? 'error' : 'success'}
                           />
                           <Typography variant="body2">
                             {trade.date} - ¥{trade.price.toFixed(2)} × {trade.shares}

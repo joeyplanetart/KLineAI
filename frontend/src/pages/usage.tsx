@@ -151,7 +151,7 @@ export const UsagePage: React.FC = () => {
                     <Typography variant="body2" color="text.secondary">
                       Total Cost
                     </Typography>
-                    <Typography variant="h4">${usageData.summary.total_cost.toFixed(6)}</Typography>
+                    <Typography variant="h4">¥{usageData.summary.total_cost.toFixed(6)}</Typography>
                   </Box>
                 </CardContent>
               </Card>
@@ -197,7 +197,7 @@ export const UsagePage: React.FC = () => {
                             </TableCell>
                             <TableCell align="right">{model.calls}</TableCell>
                             <TableCell align="right">{model.total_tokens.toLocaleString()}</TableCell>
-                            <TableCell align="right">${model.cost.toFixed(6)}</TableCell>
+                            <TableCell align="right">¥{model.cost.toFixed(6)}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -229,7 +229,7 @@ export const UsagePage: React.FC = () => {
                             <TableCell>{day.date}</TableCell>
                             <TableCell align="right">{day.calls}</TableCell>
                             <TableCell align="right">{day.tokens.toLocaleString()}</TableCell>
-                            <TableCell align="right">${day.cost.toFixed(6)}</TableCell>
+                            <TableCell align="right">¥{day.cost.toFixed(6)}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>

@@ -197,10 +197,10 @@ export const DashboardPage: React.FC = () => {
         type: 'candlestick',
         data: stockData.map(d => [d.open, d.close, d.low, d.high]).reverse(),
         itemStyle: {
-          color: '#ef5350',
-          color0: '#26a69a',
-          borderColor: '#ef5350',
-          borderColor0: '#26a69a',
+          color: '#ef0428',
+          color0: '#00c853',
+          borderColor: '#ef0428',
+          borderColor0: '#00c853',
         },
       },
     ],
@@ -261,8 +261,8 @@ export const DashboardPage: React.FC = () => {
           <StatCard
             title="今日收益"
             value={`${parseFloat(todayChange) >= 0 ? '+' : ''}${todayChange}%`}
-            icon={<TrendingDownIcon sx={{ color: parseFloat(todayChange) >= 0 ? '#3f8600' : '#cf1322' }} />}
-            color={parseFloat(todayChange) >= 0 ? '#3f8600' : '#cf1322'}
+            icon={<TrendingDownIcon sx={{ color: parseFloat(todayChange) >= 0 ? '#ef0428' : '#00c853' }} />}
+            color={parseFloat(todayChange) >= 0 ? '#ef0428' : '#00c853'}
           />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>

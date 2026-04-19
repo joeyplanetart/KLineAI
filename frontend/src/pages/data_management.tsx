@@ -641,7 +641,7 @@ export const DataManagementPage: React.FC = () => {
               </Stack>
             </Box>
             <Alert severity="info" sx={{ mb: 2 }}>
-              注意：敏感配置（数据库、API密钥等）不在此管理，请通过 .env 文件修改。此处仅管理数据采集、缓存和数据校验相关的应用设置。
+              下方配置当前为默认值。如需永久修改，请在 .env 文件中添加对应配置项（参考以下格式），然后重启服务使配置生效。
             </Alert>
             <TableContainer component={Paper}>
               <Table size="small">

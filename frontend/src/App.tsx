@@ -10,6 +10,7 @@ import { LoginPage } from './pages/login';
 import { RegisterPage } from './pages/register';
 import { AdminPage } from './pages/admin';
 import { UsagePage } from './pages/usage';
+import { DataManagementPage } from './pages/data_management';
 import { NotFound } from './components/NotFound';
 
 const App: React.FC = () => {
@@ -59,6 +60,17 @@ const App: React.FC = () => {
                 <ProtectedRoute>
                   <Layout>
                     <UsagePage />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/data-management"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <DataManagementPage />
                   </Layout>
                 </ProtectedRoute>
               }

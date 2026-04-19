@@ -27,6 +27,7 @@ import {
   Logout as LogoutIcon,
   AdminPanelSettings as AdminIcon,
   Timeline as TimelineIcon,
+  Storage as StorageIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useThemeMode } from '../context/ThemeContext';
@@ -37,6 +38,7 @@ const DRAWER_WIDTH = 240;
 const menuItems = [
   { text: '行情概览', path: '/', icon: <DashboardIcon /> },
   { text: '策略中心', path: '/strategy', icon: <StrategyIcon /> },
+  { text: '数据管理', path: '/data-management', icon: <StorageIcon /> },
   { text: '用量统计', path: '/usage', icon: <TimelineIcon /> },
 ];
 

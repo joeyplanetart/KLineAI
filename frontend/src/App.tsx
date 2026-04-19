@@ -1,24 +1,50 @@
 import React from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeContext';
+import { AuthProvider } from './context/AuthContext';
 import { Layout } from './components/Layout';
+import { ProtectedRoute } from './components/ProtectedRoute';
 import { DashboardPage } from './pages/dashboard';
 import { StrategyPage } from './pages/strategy';
+import { LoginPage } from './pages/login';
+import { RegisterPage } from './pages/register';
 import { NotFound } from './components/NotFound';
 
 const App: React.FC = () => {
   return (
-    <ThemeProvider>
-      <BrowserRouter>
-        <Layout>
+    <AuthProvider>
+      <ThemeProvider>
+        <BrowserRouter>
           <Routes>
-            <Route path="/" element={<DashboardPage />} />
-            <Route path="/strategy" element={<StrategyPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <DashboardPage />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/strategy"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <StrategyPage />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+
             <Route path="*" element={<NotFound />} />
           </Routes>
-        </Layout>
-      </BrowserRouter>
-    </ThemeProvider>
+        </BrowserRouter>
+      </ThemeProvider>
+    </AuthProvider>
   );
 };
 

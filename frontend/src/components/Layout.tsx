@@ -11,6 +11,11 @@ import {
   ListItemIcon,
   ListItemText,
   Box,
+  Menu,
+  MenuItem,
+  ListItemIcon as ListItemIconBase,
+  Divider,
+  Button,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -18,9 +23,13 @@ import {
   Psychology as StrategyIcon,
   Brightness4 as Brightness4Icon,
   Brightness7 as Brightness7Icon,
+  AccountCircle as AccountCircleIcon,
+  Logout as LogoutIcon,
+  AdminPanelSettings as AdminIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useThemeMode } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 
 const DRAWER_WIDTH = 240;
 
@@ -31,12 +40,27 @@ const menuItems = [
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const navigate = useNavigate();
   const location = useLocation();
   const { mode, toggleTheme } = useThemeMode();
+  const { user, logout, isAuthenticated } = useAuth();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
+  };
+
+  const handleUserMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleUserMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleLogout = () => {
+    handleUserMenuClose();
+    logout();
   };
 
   const drawer = (
@@ -80,6 +104,43 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           <IconButton color="inherit" onClick={toggleTheme}>
             {mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
           </IconButton>
+
+          {isAuthenticated ? (
+            <>
+              <IconButton color="inherit" onClick={handleUserMenuOpen}>
+                <AccountCircleIcon />
+              </IconButton>
+              <Menu
+                anchorEl={anchorEl}
+                open={Boolean(anchorEl)}
+                onClose={handleUserMenuClose}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+              >
+                <MenuItem disabled>
+                  <ListItemText
+                    primary={user?.username}
+                    secondary={user?.role === 'admin' ? 'Administrator' : 'User'}
+                  />
+                </MenuItem>
+                <Divider />
+                {user?.role === 'admin' && (
+                  <MenuItem onClick={() => { handleUserMenuClose(); navigate('/admin'); }}>
+                    <ListItemIconBase><AdminIcon /></ListItemIconBase>
+                    <ListItemText primary="Admin Panel" />
+                  </MenuItem>
+                )}
+                <MenuItem onClick={handleLogout}>
+                  <ListItemIconBase><LogoutIcon /></ListItemIconBase>
+                  <ListItemText primary="Logout" />
+                </MenuItem>
+              </Menu>
+            </>
+          ) : (
+            <Button color="inherit" onClick={() => navigate('/login')}>
+              Login
+            </Button>
+          )}
         </Toolbar>
       </AppBar>
 

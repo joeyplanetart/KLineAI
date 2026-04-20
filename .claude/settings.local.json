@@ -46,7 +46,9 @@
       "Bash(venv/bin/python:*)",
       "Bash(npx tsc --noEmit --skipLibCheck)",
       "mcp__MiniMax__understand_image",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(nohup uvicorn *)",
+      "Bash(uvicorn app.main:app *)"
     ]
   }
 }

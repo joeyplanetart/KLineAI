@@ -53,6 +53,12 @@ def fetch_and_save_daily_data(
 
         # 数据清洗和转换
         records = []
+        # 按日期排序，确保按时间顺序处理
+        df = df.sort_values('date')
+
+        # 用于跟踪前一日收盘价
+        prev_close = None
+
         for _, row in df.iterrows():
             trade_date = row.get("date")
             if isinstance(trade_date, str):
@@ -61,17 +67,35 @@ def fetch_and_save_daily_data(
                 trade_date = trade_date.date()
 
             # 准备原始数据用于校验
+            open_price = row.get("open", 0)
+            close_price = row.get("close", 0)
+
+            # 计算涨跌幅：如果有前一日收盘价则用它计算，否则用开盘价
+            raw_pct_change = row.get("pct_change", 0.0)
+            if prev_close and prev_close != 0:
+                pct_change = round((close_price - prev_close) / prev_close * 100, 2)
+            elif raw_pct_change == 0 and open_price and open_price != 0:
+                pct_change = round((close_price - open_price) / open_price * 100, 2)
+            else:
+                pct_change = raw_pct_change
+
+            # 计算涨跌额
+            if prev_close and prev_close != 0:
+                change_amount = round(close_price - prev_close, 4)
+            else:
+                change_amount = close_price - open_price if open_price else 0.0
+
             raw_data = {
                 "symbol": symbol,
                 "trade_date": trade_date,
-                "open": row.get("open", 0),
-                "close": row.get("close", 0),
+                "open": open_price,
+                "close": close_price,
                 "high": row.get("high", 0),
                 "low": row.get("low", 0),
                 "volume": int(row.get("volume", 0)) if row.get("volume") else 0,
                 "amount": row.get("amount", 0),
-                "change_amount": row.get("change_amount", 0.0),
-                "pct_change": row.get("pct_change", 0.0),
+                "change_amount": change_amount,
+                "pct_change": pct_change,
                 "turnover_rate": row.get("turnover_rate", 0.0),
                 "amplitude": row.get("amplitude", 0.0),
             }
@@ -99,17 +123,17 @@ def fetch_and_save_daily_data(
                 symbol=symbol,
                 name="",
                 trade_date=trade_date,
-                open=row.get("open", 0),
-                close=row.get("close", 0),
+                open=open_price,
+                close=close_price,
                 high=row.get("high", 0),
                 low=row.get("low", 0),
                 volume=int(row.get("volume", 0)) if row.get("volume") else 0,
                 amount=row.get("amount", 0),
-                change_amount=row.get("change_amount", 0.0),
-                pct_change=row.get("pct_change", 0.0),
+                change_amount=change_amount,
+                pct_change=pct_change,
                 turnover_rate=row.get("turnover_rate", 0.0) if row.get("turnover_rate") else 0.0,
-                # 计算振幅: (最高价-最低价)/收盘价 * 100
-                amplitude=row.get("amplitude", 0.0) if row.get("amplitude") else (float(row.get("high", 0)) - float(row.get("low", 0))) / float(row.get("close", 1)) * 100 if row.get("close") else 0.0,
+                # 计算振幅: (最高价-最低价)/前收盘价 * 100
+                amplitude=row.get("amplitude", 0.0) if row.get("amplitude") else ((float(row.get("high", 0)) - float(row.get("low", 0))) / float(prev_close) * 100) if prev_close and prev_close != 0 else 0.0,
                 pe=0.0,
                 pb=0.0,
                 is_validated=validate,
@@ -120,6 +144,9 @@ def fetch_and_save_daily_data(
 
             if has_anomaly:
                 result["anomaly_count"] += 1
+
+            # 更新前一日收盘价，供下一日计算涨跌幅
+            prev_close = close_price
 
         # 插入数据库
         for record in records:

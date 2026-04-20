@@ -340,8 +340,12 @@ class DataSourceManager:
             # 使用 AKShare 获取股票列表
             df = ak.stock_info_a_code_name()
             stocks = []
+            seen_codes = set()  # 去重
             for _, row in df.iterrows():
                 code = row['code']
+                if code in seen_codes:
+                    continue
+                seen_codes.add(code)
                 name = row['name'].strip()
                 # 判断交易所：6开头为上海，0/3开头为深圳
                 if code.startswith('6'):

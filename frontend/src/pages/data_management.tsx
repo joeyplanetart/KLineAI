@@ -8,6 +8,8 @@ import {
   Tab,
   Table,
   TableBody,
+  Autocomplete,
+  TextField,
   TableCell,
   TableContainer,
   TableHead,
@@ -16,7 +18,6 @@ import {
   Button,
   Alert,
   CircularProgress,
-  TextField,
   Stack,
   Paper,
   IconButton,
@@ -90,9 +91,11 @@ interface StockInfo {
     pct_change?: number;
     volume?: number;
     amount?: number;
-    turnover_rate?: number;
     amplitude?: number;
     volume_ratio?: number;
+    limit_status?: 'up' | 'down' | 'none';
+    next_limit_up?: number;
+    next_limit_down?: number;
   };
 }
 
@@ -150,6 +153,8 @@ export const DataManagementPage: React.FC = () => {
   const [stockPagination, setStockPagination] = useState<PaginationInfo>({ page: 1, page_size: 50, total: 0, total_pages: 0 });
   const [stockSearch, setStockSearch] = useState('');
   const [stockExchange, setStockExchange] = useState<string>('');
+  const [stockSuggestions, setStockSuggestions] = useState<StockInfo[]>([]);
+  const [clearingStock, setClearingStock] = useState<string | null>(null);
   const [anomalies, setAnomalies] = useState<DataQualityAnomaly[]>([]);
   const [anomalyPagination, setAnomalyPagination] = useState<PaginationInfo>({ page: 1, page_size: 50, total: 0, total_pages: 0 });
   const [qualitySummary, setQualitySummary] = useState<any>(null);
@@ -235,6 +240,7 @@ export const DataManagementPage: React.FC = () => {
       const result = await response.json();
       if (response.ok) {
         setClearMessage(`已清空 ${result.deleted_count} 条股票数据`);
+        fetchStockList();
       } else {
         setClearMessage('清空失败: ' + (result.detail || 'Unknown error'));
       }
@@ -242,6 +248,45 @@ export const DataManagementPage: React.FC = () => {
       setClearMessage('清空失败: ' + (err instanceof Error ? err.message : 'Unknown error'));
     } finally {
       setClearing(false);
+    }
+  };
+
+  // Clear single stock data
+  const handleClearSingleStockData = async (symbol: string) => {
+    if (!window.confirm(`确定要清空 ${symbol} 的所有数据吗？`)) {
+      return;
+    }
+    setClearingStock(symbol);
+    try {
+      const response = await fetch(`${API_URL}/market/data/${symbol}`, { method: 'DELETE' });
+      const result = await response.json();
+      if (response.ok) {
+        setSnackbar({ open: true, message: `已清空 ${symbol} 的 ${result.deleted_count} 条数据`, severity: 'success' });
+        fetchStockList(stockPagination.page, stockSearch, stockExchange);
+      } else {
+        setSnackbar({ open: true, message: '清空失败: ' + (result.detail || 'Unknown error'), severity: 'error' });
+      }
+    } catch (err) {
+      setSnackbar({ open: true, message: '清空失败: ' + (err instanceof Error ? err.message : 'Unknown error'), severity: 'error' });
+    } finally {
+      setClearingStock(null);
+    }
+  };
+
+  // Fetch stock suggestions for autocomplete
+  const fetchStockSuggestions = async (q: string) => {
+    if (!q || q.length < 1) {
+      setStockSuggestions([]);
+      return;
+    }
+    try {
+      const response = await fetch(`${API_URL}/market/search?q=${encodeURIComponent(q)}&limit=10`);
+      if (response.ok) {
+        const data = await response.json();
+        setStockSuggestions(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch stock suggestions:', err);
     }
   };
 
@@ -604,7 +649,14 @@ export const DataManagementPage: React.FC = () => {
         <Card>
           <CardContent>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h6">股票列表</Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography variant="h6">股票列表</Typography>
+                <Tooltip title="刷新列表">
+                  <IconButton onClick={() => fetchStockList(1, stockSearch, stockExchange)} size="small">
+                    <RefreshIcon />
+                  </IconButton>
+                </Tooltip>
+              </Box>
               <Stack direction="row" spacing={1}>
                 <Button
                   startIcon={clearing ? <CircularProgress size={20} /> : <DeleteIcon />}
@@ -637,22 +689,44 @@ export const DataManagementPage: React.FC = () => {
             )}
             {/* Search and Filter */}
             <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-              <TextField
+              <Autocomplete
+                freeSolo
                 size="small"
-                placeholder="搜索代码或名称"
-                value={stockSearch}
-                onChange={(e) => setStockSearch(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && fetchStockList(1, stockSearch, stockExchange)}
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton onClick={() => fetchStockList(1, stockSearch, stockExchange)} edge="end">
-                        <SearchIcon />
-                      </IconButton>
-                    </InputAdornment>
-                  ),
+                options={stockSuggestions}
+                getOptionLabel={(option) => typeof option === 'string' ? option : option.search_key}
+                inputValue={stockSearch}
+                onInputChange={(_event, newValue) => {
+                  setStockSearch(newValue);
+                  fetchStockSuggestions(newValue);
                 }}
-                sx={{ width: 250 }}
+                onChange={(_event, value) => {
+                  if (value && typeof value !== 'string') {
+                    setStockSearch(value.code);
+                    fetchStockList(1, value.code, stockExchange);
+                  }
+                }}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    fetchStockList(1, stockSearch, stockExchange);
+                  }
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="搜索代码或名称"
+                    InputProps={{
+                      ...params.InputProps,
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton onClick={() => fetchStockList(1, stockSearch, stockExchange)} edge="end">
+                            <SearchIcon />
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    }}
+                    sx={{ width: 280 }}
+                  />
+                )}
               />
               <FormControl size="small" sx={{ minWidth: 120 }}>
                 <InputLabel>交易所</InputLabel>
@@ -681,9 +755,9 @@ export const DataManagementPage: React.FC = () => {
                     <TableCell align="right">涨跌幅</TableCell>
                     <TableCell align="right">成交量</TableCell>
                     <TableCell align="right">成交额</TableCell>
-                    <TableCell align="right">换手率</TableCell>
                     <TableCell align="right">振幅</TableCell>
                     <TableCell align="right">量比</TableCell>
+                    <TableCell align="center">操作</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -693,14 +767,36 @@ export const DataManagementPage: React.FC = () => {
                       <TableCell>{stock.name}</TableCell>
                       <TableCell>{stock.exchange}</TableCell>
                       <TableCell align="right">{stock.latest?.close?.toFixed(2) || '-'}</TableCell>
-                      <TableCell align="right" sx={{ color: (stock.latest?.pct_change || 0) >= 0 ? 'error.main' : 'success.main' }}>
-                        {stock.latest?.pct_change ? `${stock.latest.pct_change.toFixed(2)}%` : '-'}
+                      <TableCell align="right">
+                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: (stock.latest?.pct_change ?? 0) >= 0 ? 'error.main' : 'success.main' }}>
+                            {stock.latest?.pct_change != null ? `${stock.latest.pct_change.toFixed(2)}%` : '-'}
+                            {stock.latest?.limit_status === 'up' && <Chip label="涨停" color="error" size="small" sx={{ height: 18, fontSize: '0.7rem' }} />}
+                            {stock.latest?.limit_status === 'down' && <Chip label="跌停" color="success" size="small" sx={{ height: 18, fontSize: '0.7rem' }} />}
+                          </Box>
+                          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                            <Box component="span" sx={{ color: 'error.main' }}>{stock.latest?.next_limit_up != null ? `↑${stock.latest.next_limit_up}` : ''}</Box>
+                            {' / '}
+                            <Box component="span" sx={{ color: 'success.main' }}>{stock.latest?.next_limit_down != null ? `↓${stock.latest.next_limit_down}` : ''}</Box>
+                          </Typography>
+                        </Box>
                       </TableCell>
-                      <TableCell align="right">{stock.latest?.volume ? (stock.latest.volume / 10000).toFixed(0) + '万' : '-'}</TableCell>
+                      <TableCell align="right">{stock.latest?.volume ? (stock.latest.volume / 1000000).toFixed(2) + '万手' : '-'}</TableCell>
                       <TableCell align="right">{stock.latest?.amount ? (stock.latest.amount / 100000000).toFixed(2) + '亿' : '-'}</TableCell>
-                      <TableCell align="right">{stock.latest?.turnover_rate != null ? stock.latest.turnover_rate.toFixed(2) + '%' : '-'}</TableCell>
                       <TableCell align="right">{stock.latest?.amplitude != null ? stock.latest.amplitude.toFixed(2) + '%' : '-'}</TableCell>
                       <TableCell align="right">{stock.latest?.volume_ratio != null ? stock.latest.volume_ratio.toFixed(2) : '-'}</TableCell>
+                      <TableCell align="center">
+                        <Tooltip title="清空该股票数据">
+                          <IconButton
+                            size="small"
+                            color="error"
+                            onClick={() => handleClearSingleStockData(stock.symbol)}
+                            disabled={clearingStock === stock.symbol}
+                          >
+                            {clearingStock === stock.symbol ? <CircularProgress size={18} /> : <DeleteIcon />}
+                          </IconButton>
+                        </Tooltip>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

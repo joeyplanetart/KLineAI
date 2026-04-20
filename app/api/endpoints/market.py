@@ -113,14 +113,31 @@ class AnomalyRecord(BaseModel):
 _stock_list_cache: List[dict] = []
 
 
+def _normalize_symbol(code_or_symbol: str) -> str:
+    """将股票代码标准化为 symbol 格式 (sh600000/sz000001)"""
+    code_or_symbol = code_or_symbol.strip().lower()
+    if code_or_symbol.startswith('sh') or code_or_symbol.startswith('sz'):
+        return code_or_symbol
+    # 纯代码，根据规则添加前缀
+    code = code_or_symbol
+    if code.startswith('6') or code.startswith('5'):
+        return f'sh{code}'
+    else:
+        return f'sz{code}'
+
+
 def _get_stock_list() -> List[dict]:
-    """获取股票列表（带缓存）"""
+    """获取股票列表（带缓存，去重）"""
     global _stock_list_cache
     if not _stock_list_cache:
         try:
             df = ak.stock_info_a_code_name()
+            seen_codes = set()  # 去重
             for _, row in df.iterrows():
                 code = row['code']
+                if code in seen_codes:
+                    continue
+                seen_codes.add(code)
                 name = row['name'].strip()
                 # 判断交易所：6开头为上海，0/3开头为深圳
                 if code.startswith('6'):
@@ -154,6 +171,7 @@ def search_stocks(q: str, limit: int = 10):
     """
     Search stocks by code or name.
     Returns up to `limit` matching stocks.
+    Supports formats: "300337", "sz300337", "sh600000", "银邦"
     """
     if not q or len(q) < 1:
         return []
@@ -161,13 +179,24 @@ def search_stocks(q: str, limit: int = 10):
     q_lower = q.lower()
     stock_list = _get_stock_list()
 
-    # 匹配：代码或名称包含搜索词
+    # 兼容 sz300337 / sh600000 格式
+    exact_symbol = None
+    if q_lower.startswith('sz') or q_lower.startswith('sh'):
+        exact_symbol = q_lower
+
     results = []
     for stock in stock_list:
-        if q_lower in stock['code'].lower() or q_lower in stock['name'].lower():
-            results.append(StockInfo(**stock))
-            if len(results) >= limit:
-                break
+        # 优先精确匹配 symbol（如 sz300337）
+        if exact_symbol:
+            if stock.get('symbol', '').lower() == exact_symbol:
+                results.append(StockInfo(**stock))
+        else:
+            # 匹配：代码或名称包含搜索词
+            if q_lower in stock['code'].lower() or q_lower in stock['name'].lower():
+                results.append(StockInfo(**stock))
+
+        if len(results) >= limit:
+            break
 
     return results
 
@@ -242,7 +271,7 @@ def batch_fetch_stocks(
     collector = BatchCollector()
 
     # If symbols is empty, fetch all active A-share stocks from database
-    symbols = request.symbols
+    symbols = [_normalize_symbol(s) for s in request.symbols] if request.symbols else []
     is_fetch_all = False
     if not symbols:
         stocks = db.query(StockInfoModel).filter(
@@ -600,11 +629,16 @@ def get_stock_list(
         query = query.filter(StockInfoModel.status == status.lower())
 
     if search:
-        search_pattern = f"%{search}%"
-        query = query.filter(
-            (StockInfoModel.code.ilike(search_pattern)) |
-            (StockInfoModel.name.ilike(search_pattern))
-        )
+        search_lower = search.lower()
+        # 兼容 sz300337 / sh600000 格式，精确匹配 symbol
+        if search_lower.startswith('sz') or search_lower.startswith('sh'):
+            query = query.filter(StockInfoModel.symbol == search_lower)
+        else:
+            search_pattern = f"%{search}%"
+            query = query.filter(
+                (StockInfoModel.code.ilike(search_pattern)) |
+                (StockInfoModel.name.ilike(search_pattern))
+            )
 
     # Get total count before pagination
     total = query.count()
@@ -645,6 +679,34 @@ def get_stock_list(
             else:
                 volume_ratio = None
 
+            # 计算涨停/跌停状态：需要获取前一天收盘价
+            limit_status = 'none'
+            prev_close = None
+            # 主板10%涨跌幅，创业板/科创板20%
+            is_chi_next = record.symbol.startswith('sz300') or record.symbol.startswith('sh688')
+            limit_pct = 0.20 if is_chi_next else 0.10
+
+            if len(recent_volumes) > 0:
+                # 获取前一天收盘价
+                prev_record = db.query(StockDaily.close).filter(
+                    StockDaily.symbol == record.symbol,
+                    StockDaily.trade_date < record.trade_date
+                ).order_by(StockDaily.trade_date.desc()).first()
+                if prev_record:
+                    prev_close = prev_record.close
+                    if prev_close and prev_close > 0:
+                        upper_limit = prev_close * (1 + limit_pct)
+                        lower_limit = prev_close * (1 - limit_pct)
+                        # 使用收盘价判断（考虑浮点数精度）
+                        if record.close >= upper_limit * 0.9999:
+                            limit_status = 'up'
+                        elif record.close <= lower_limit * 1.0001:
+                            limit_status = 'down'
+
+            # 计算隔日涨停价/跌停价（基于当前收盘价）
+            next_limit_up = round(record.close * (1 + limit_pct), 2) if record.close else None
+            next_limit_down = round(record.close * (1 - limit_pct), 2) if record.close else None
+
             latest_data[record.symbol] = {
                 "trade_date": record.trade_date.isoformat() if record.trade_date else None,
                 "close": record.close,
@@ -654,6 +716,9 @@ def get_stock_list(
                 "turnover_rate": record.turnover_rate,
                 "amplitude": record.amplitude,
                 "volume_ratio": round(volume_ratio, 2) if volume_ratio else None,
+                "limit_status": limit_status,
+                "next_limit_up": next_limit_up,
+                "next_limit_down": next_limit_down,
             }
 
     return {

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from typing import List, Any, Optional
+from typing import List, Any, Optional, Tuple
 from app.core.db import get_db
 from app.models.stock import StockDaily
 from app.models.data_quality import DataQualityLog
@@ -13,7 +13,9 @@ from app.services.data_collector.realtime_collector import RealtimeCollector
 from app.services.cache.cache_manager import cache_manager
 from pydantic import BaseModel
 from datetime import date, datetime, timedelta
+import math
 import akshare as ak
+import baostock as bs
 
 router = APIRouter()
 
@@ -86,6 +88,27 @@ class RealtimeQuote(BaseModel):
     prev_close: float
     timestamp: str
 
+
+class IndexOverviewItem(BaseModel):
+    """行情概览中的单条指数（优先 BaoStock 日线）"""
+    symbol: str
+    name: str
+    price: Optional[float] = None
+    pct_change: Optional[float] = None
+    available: bool = False
+
+
+class MarketOverview(BaseModel):
+    """市场概览数据"""
+    # 大盘统计
+    total_amount: float  # 总成交额
+    up_count: int  # 上涨家数
+    down_count: int  # 下跌家数
+    flat_count: int  # 持平家数
+    # 主要指数（固定列表顺序，缺数据时 available=False）
+    indices: List[IndexOverviewItem]
+    # 港股主要指数（BaoStock 不支持港股指数；先尝试 BaoStock 占位逻辑，再新浪 / 东财）
+    hk_indices: List[IndexOverviewItem]
 
 class DataQualitySummary(BaseModel):
     period_days: int
@@ -211,6 +234,239 @@ def _get_last_trading_day() -> str:
         if check_date.weekday() < 5:  # Monday=0, Friday=4
             return check_date.strftime("%Y%m%d")
     return today.strftime("%Y%m%d")
+
+
+# 行情概览固定指数列表：(BaoStock 查询用 symbol, 展示用代码, 中文名)；第一项为 None 表示仅占位
+_OVERVIEW_INDEX_ROWS: List[Tuple[Optional[str], str, str]] = [
+    ("sh000001", "000001", "上证指数"),
+    ("sz399001", "399001", "深证成指"),
+    ("sz399006", "399006", "创业板指"),
+    ("sh000688", "000688", "科创50"),
+    ("sh000300", "000300", "沪深300"),
+    ("sh000852", "000852", "中证1000"),
+    (None, "CN00Y", "富时A50指数期货"),
+]
+
+# 港股指数：新浪财经列表代码 hkHSI / 展示代码 / 中文名（BaoStock 仅支持 sh./sz.，此处先做接口尝试，再走行情源）
+_HK_INDEX_ROWS: List[Tuple[str, str, str]] = [
+    ("hkHSI", "HSI", "恒生指数"),
+    ("hkHSTECH", "HSTECH", "恒生科技指数"),
+    ("hkHSCEI", "HSCEI", "国企指数"),
+]
+
+
+def _safe_float(val: Any) -> Optional[float]:
+    try:
+        x = float(val)
+        if math.isnan(x):
+            return None
+        return x
+    except (TypeError, ValueError):
+        return None
+
+
+def _baostock_hk_index_last_close_pct(_sina_list_code: str) -> Tuple[Optional[float], Optional[float]]:
+    """
+    BaoStock 历史 K 线仅支持沪深市场（sh./sz.），港股指数无官方代码接入，返回空。
+    保留函数便于日后若接口扩展时统一调用。
+    """
+    return None, None
+
+
+def _hk_index_spot_map_sina() -> dict:
+    """新浪财经港股指数列表 -> {列表代码: (最新价, 涨跌幅%%)}"""
+    out: dict = {}
+    try:
+        df = ak.stock_hk_index_spot_sina()
+        if df is None or df.empty:
+            return out
+        for _, row in df.iterrows():
+            code = str(row.get("代码", "")).strip()
+            if not code:
+                continue
+            px = _safe_float(row.get("最新价"))
+            pct = _safe_float(row.get("涨跌幅"))
+            if px is not None:
+                out[code] = (px, pct if pct is not None else 0.0)
+    except Exception as e:
+        print(f"Sina HK index spot failed: {e}")
+    return out
+
+
+def _hk_index_spot_map_em() -> dict:
+    """东财港股指数列表 -> {新浪同源键 hkHSI: (价, 涨跌幅)}"""
+    out: dict = {}
+    try:
+        df = ak.stock_hk_index_spot_em()
+        if df is None or df.empty:
+            return out
+        for _, row in df.iterrows():
+            code = str(row.get("代码", "")).strip().upper()
+            name = str(row.get("名称", ""))
+            px = _safe_float(row.get("最新价"))
+            pct = _safe_float(row.get("涨跌幅"))
+            if px is None:
+                continue
+            pct_v = pct if pct is not None else 0.0
+            key = None
+            if code == "HSI":
+                key = "hkHSI"
+            elif code == "HSCEI":
+                key = "hkHSCEI"
+            elif code == "HSTECH":
+                key = "hkHSTECH"
+            elif "恒生科技" in name:
+                key = "hkHSTECH"
+            elif "恒生中国企业" in name or "国企指数" in name:
+                key = "hkHSCEI"
+            elif "恒生指数" in name and "科技" not in name and "国企" not in name:
+                key = "hkHSI"
+            if key:
+                out[key] = (px, pct_v)
+    except Exception as e:
+        print(f"EM HK index spot failed: {e}")
+    return out
+
+
+def _build_hk_overview_indices() -> List[IndexOverviewItem]:
+    sina_map = _hk_index_spot_map_sina()
+    em_map: dict = {}
+    items: List[IndexOverviewItem] = []
+    for sina_code, display_code, name in _HK_INDEX_ROWS:
+        price, pct = _baostock_hk_index_last_close_pct(sina_code)
+        if price is None and sina_code in sina_map:
+            price, pct = sina_map[sina_code]
+        if price is None:
+            if not em_map:
+                em_map = _hk_index_spot_map_em()
+            if sina_code in em_map:
+                price, pct = em_map[sina_code]
+        ok = price is not None
+        items.append(
+            IndexOverviewItem(
+                symbol=display_code,
+                name=name,
+                price=price,
+                pct_change=pct if ok else None,
+                available=ok,
+            )
+        )
+    return items
+
+
+def _baostock_index_last_close_pct(internal_symbol: str) -> Tuple[Optional[float], Optional[float]]:
+    """
+    使用 BaoStock 指数日线取最近收盘及较前一日涨跌幅。
+    internal_symbol: sh000001 / sz399001
+    """
+    internal_symbol = internal_symbol.strip().lower()
+    if internal_symbol.startswith("sh"):
+        bs_code = f"sh.{internal_symbol[2:]}"
+    elif internal_symbol.startswith("sz"):
+        bs_code = f"sz.{internal_symbol[2:]}"
+    else:
+        return None, None
+
+    try:
+        data_source_manager.baostock._ensure_login()
+        end = datetime.now().date()
+        start = end - timedelta(days=120)
+        start_s = start.strftime("%Y-%m-%d")
+        end_s = end.strftime("%Y-%m-%d")
+        rs = bs.query_history_k_data_plus(
+            bs_code,
+            "date,close",
+            start_date=start_s,
+            end_date=end_s,
+            frequency="d",
+            adjustflag="3",
+        )
+        if rs.error_code != "0":
+            return None, None
+        rows: List[List[str]] = []
+        while rs.next():
+            rows.append(rs.get_row_data())
+        if not rows:
+            return None, None
+        last_close = float(rows[-1][1])
+        if len(rows) >= 2:
+            prev_close = float(rows[-2][1])
+            if prev_close:
+                pct = (last_close - prev_close) / prev_close * 100.0
+            else:
+                pct = None
+        else:
+            pct = 0.0
+        return last_close, pct
+    except Exception as e:
+        print(f"BaoStock index {bs_code!r} failed: {e}")
+        return None, None
+
+
+def _overview_totals_from_akshare_spot() -> Optional[Tuple[float, int, int, int]]:
+    """东方财富 A 股列表接口（全市场口径）。"""
+    try:
+        df = ak.stock_zh_a_spot_em()
+        if df is None or df.empty:
+            return None
+        pct_col = None
+        for col in df.columns:
+            if "涨跌幅" in col or "percent" in str(col).lower():
+                pct_col = col
+                break
+        up_c = down_c = flat_c = 0
+        if pct_col:
+            up_c = int((df[pct_col] > 0).sum())
+            down_c = int((df[pct_col] < 0).sum())
+            flat_c = int((df[pct_col] == 0).sum())
+        amount_col = None
+        for col in df.columns:
+            if "成交额" in col or "amount" in str(col).lower():
+                amount_col = col
+                break
+        if not amount_col:
+            return None
+        total_yi = round(float(df[amount_col].sum()) / 1e8, 2)
+        return (total_yi, up_c, down_c, flat_c)
+    except Exception as e:
+        print(f"AKShare market spot overview failed: {e}")
+        return None
+
+
+def _build_overview_indices_baostock() -> List[IndexOverviewItem]:
+    """按固定顺序组装指数列表；BaoStock 无数据则占位。"""
+    try:
+        out: List[IndexOverviewItem] = []
+        for internal, display_code, name in _OVERVIEW_INDEX_ROWS:
+            if internal is None:
+                out.append(
+                    IndexOverviewItem(
+                        symbol=display_code,
+                        name=name,
+                        price=None,
+                        pct_change=None,
+                        available=False,
+                    )
+                )
+                continue
+            price, pct = _baostock_index_last_close_pct(internal)
+            ok = price is not None
+            out.append(
+                IndexOverviewItem(
+                    symbol=display_code,
+                    name=name,
+                    price=price,
+                    pct_change=pct if ok else None,
+                    available=ok,
+                )
+            )
+        return out
+    except Exception as e:
+        print(f"Error building overview indices from BaoStock: {e}")
+        return [
+            IndexOverviewItem(symbol=display_code, name=name, available=False)
+            for _, display_code, name in _OVERVIEW_INDEX_ROWS
+        ]
 
 
 @router.post("/fetch/{symbol}")
@@ -833,6 +1089,33 @@ def fetch_today_data(
         "success": result["success"],
         "failed": result["failed"]
     }
+
+
+@router.get("/overview", response_model=MarketOverview)
+def get_market_overview():
+    """
+    获取市场概览数据：成交额与涨跌家数、主要指数。
+
+    成交额 / 涨跌家数仅来自 AKShare 东财全市场列表（不对本地 stock_daily 做聚合，避免不完整库表误导）。
+    """
+    result = {
+        "total_amount": 0.0,
+        "up_count": 0,
+        "down_count": 0,
+        "flat_count": 0,
+        "indices": _build_overview_indices_baostock(),
+        "hk_indices": _build_hk_overview_indices(),
+    }
+
+    ak_totals = _overview_totals_from_akshare_spot()
+    if ak_totals is not None:
+        total_yi, up_c, down_c, flat_c = ak_totals
+        result["total_amount"] = total_yi
+        result["up_count"] = up_c
+        result["down_count"] = down_c
+        result["flat_count"] = flat_c
+
+    return MarketOverview(**result)
 
 
 @router.get("/{symbol}")

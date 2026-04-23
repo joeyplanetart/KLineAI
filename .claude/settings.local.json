@@ -48,7 +48,13 @@
       "mcp__MiniMax__understand_image",
       "Bash(npx tsc:*)",
       "Bash(nohup uvicorn *)",
-      "Bash(uvicorn app.main:app *)"
+      "Bash(uvicorn app.main:app *)",
+      "WebFetch(domain:akshare.akfamily.xyz)",
+      "WebFetch(domain:zhuanlan.zhihu.com)",
+      "Bash(npx vite *)",
+      "Bash(awk NR>=843 && NR<=846 *)",
+      "Bash(awk 'NR>=838 && NR<=850' /Users/joey/KLineAI/app/api/endpoints/market.py)",
+      "Bash(npm run *)"
     ]
   }
 }

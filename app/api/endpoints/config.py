@@ -5,6 +5,7 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime
 from app.core.db import get_db
 from app.core.config import settings
+from app.services.llm.provider import LLMProvider
 import json
 import os
 
@@ -313,9 +314,7 @@ def get_llm_providers():
     providers = []
 
     for p in LLM_PROVIDERS:
-        api_key = service.get_api_key(
-            type("LLMProvider", (), {"value": p["id"]})()
-        ) if p["id"] != "custom" else ""
+        api_key = service.get_api_key(LLMProvider(p["id"])) if p["id"] != "custom" else ""
         providers.append({
             **p,
             "configured": bool(api_key) or p["id"] == "custom",

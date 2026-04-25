@@ -30,6 +30,7 @@ import {
   CloudOff as CloudOffIcon,
 } from '@mui/icons-material';
 import ReactECharts from 'echarts-for-react';
+import { AnalysisPanel } from '../components/AnalysisPanel';
 
 const API_URL = 'http://localhost:8000/api/v1';
 
@@ -509,109 +510,7 @@ export const DashboardPage: React.FC = () => {
 
       <Card>
         <CardContent>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Typography variant="h6">
-              行情监控视图
-            </Typography>
-            <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-              {dataSources.map((ds) => (
-                <Tooltip key={ds.id} title={ds.description}>
-                  <Chip
-                    size="small"
-                    icon={ds.available ? <CloudDoneIcon /> : <CloudOffIcon />}
-                    label={ds.name}
-                    color={ds.available ? 'success' : 'default'}
-                    variant="outlined"
-                  />
-                </Tooltip>
-              ))}
-            </Stack>
-          </Box>
-
-          <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
-            <Autocomplete
-              size="small"
-              options={stockOptions}
-              getOptionLabel={(option) => option.search_key}
-              onInputChange={handleSearchChange}
-              onChange={handleStockSelect}
-              inputValue={searchInput}
-              value={selectedStock}
-              placeholder="搜索股票代码或名称"
-              sx={{ width: 280 }}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="股票"
-                  placeholder="输入代码或名称搜索..."
-                />
-              )}
-              noOptionsText="输入股票代码或名称搜索"
-            />
-            <TextField
-              size="small"
-              label="代码"
-              value={symbol}
-              onChange={(e) => setSymbol(e.target.value)}
-              sx={{ width: 140 }}
-              disabled
-            />
-            <FormControl size="small" sx={{ minWidth: 120 }}>
-              <InputLabel>数据源</InputLabel>
-              <Select
-                value={selectedSource}
-                label="数据源"
-                onChange={(e) => setSelectedSource(e.target.value)}
-              >
-                <MenuItem value="baostock">BaoStock（推荐）</MenuItem>
-                <MenuItem value="akshare" disabled={!dataSources.find(d => d.id === 'akshare')?.available}>
-                  AKShare
-                </MenuItem>
-                <MenuItem value="tushare" disabled={!dataSources.find(d => d.id === 'tushare')?.available}>
-                  Tushare
-                </MenuItem>
-              </Select>
-            </FormControl>
-            <Button
-              variant="contained"
-              onClick={handleFetchData}
-              disabled={fetching}
-              startIcon={<RefreshIcon />}
-            >
-              {fetching ? '获取中...' : '获取数据'}
-            </Button>
-            <Button
-              variant="outlined"
-              onClick={() => fetchStockData(symbol)}
-              disabled={loading}
-            >
-              刷新图表
-            </Button>
-          </Stack>
-
-          {lastFetchMessage && (
-            <Alert severity="success" sx={{ mb: 2 }}>
-              {lastFetchMessage}
-            </Alert>
-          )}
-
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
-          )}
-
-          {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-              <CircularProgress />
-            </Box>
-          ) : stockData.length > 0 ? (
-            <ReactECharts option={chartOption} style={{ height: 500 }} />
-          ) : (
-            <Alert severity="info">
-              暂无数据，请搜索并选择股票后点击"获取数据"
-            </Alert>
-          )}
+          <AnalysisPanel />
         </CardContent>
       </Card>
     </Box>

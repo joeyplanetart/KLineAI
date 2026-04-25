@@ -20,6 +20,14 @@ class StrategyGenerateRequest(BaseModel):
     name: Optional[str] = None
     save: bool = False  # 是否保存策略
 
+class IndicatorApplyRequest(BaseModel):
+    code: str  # 指标代码
+    data: List[Dict[str, Any]]  # OHLCV数据 [{trade_date, open, close, high, low, volume}, ...]
+
+class IndicatorApplyResponse(BaseModel):
+    buy: List[int]  # 买入信号索引列表
+    sell: List[int]  # 卖出信号索引列表
+
 class StrategyResponse(BaseModel):
     id: Optional[int] = None
     name: str
@@ -109,6 +117,39 @@ def generate_strategy(
         status=status,
         created_at=created_at
     )
+
+
+@router.post("/indicator/apply", response_model=IndicatorApplyResponse)
+def apply_indicator(request: IndicatorApplyRequest):
+    """
+    Apply indicator code to OHLCV data and return buy/sell signals.
+    """
+    import pandas as pd
+
+    try:
+        # Convert data to DataFrame
+        df = pd.DataFrame(request.data)
+        if df.empty:
+            return IndicatorApplyResponse(buy=[], sell=[])
+
+        # Execute the indicator code
+        local_vars = {'df': df}
+        exec(request.code, {}, local_vars)
+        df = local_vars.get('df', df)
+
+        # Get buy/sell signals
+        buy = []
+        sell = []
+        if 'buy' in df.columns:
+            buy_indices = df[df['buy'] == True].index.tolist()
+            buy = [int(i) for i in buy_indices]
+        if 'sell' in df.columns:
+            sell_indices = df[df['sell'] == True].index.tolist()
+            sell = [int(i) for i in sell_indices]
+
+        return IndicatorApplyResponse(buy=buy, sell=sell)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"指标执行失败: {str(e)}")
 
 
 @router.get("/builtin")

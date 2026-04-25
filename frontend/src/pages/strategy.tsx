@@ -8,17 +8,24 @@ import {
   CardContent,
   Chip,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Divider,
   Grid,
+  IconButton,
   TextField,
   ToggleButton,
   ToggleButtonGroup,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import {
   AutoFixHigh as AutoFixHighIcon,
   CandlestickChart as CandlestickChartIcon,
   QueryStats as QueryStatsIcon,
+  Save as SaveIcon,
 } from '@mui/icons-material';
 import ReactECharts from 'echarts-for-react';
 
@@ -68,10 +75,15 @@ interface IndicatorOption {
   label: string;
 }
 
-const INDICATOR_OPTIONS: IndicatorOption[] = [
-  { id: 'MA5', label: 'MA5' },
-  { id: 'MA10', label: 'MA10' },
-  { id: 'MA20', label: 'MA20' },
+interface SavedIndicator {
+  id: number;
+  name: string;
+  description: string;
+  code: string;
+  createdAt: string;
+}
+
+const BUILTIN_INDICATORS: IndicatorOption[] = [
   { id: 'EMA12', label: 'EMA12' },
   { id: 'EMA26', label: 'EMA26' },
   { id: 'BOLL', label: 'BOLL' },
@@ -135,12 +147,24 @@ export const StrategyPage: React.FC = () => {
   const [selectedSymbol, setSelectedSymbol] = useState<StockOption | null>(null);
 
   const [period, setPeriod] = useState<PeriodType>('1d');
-  const [selectedIndicators, setSelectedIndicators] = useState<string[]>(['MA5', 'MA20', 'BOLL']);
+  const [selectedIndicators, setSelectedIndicators] = useState<string[]>([]);
 
   const [candles, setCandles] = useState<Candle[]>([]);
   const [chartLoading, setChartLoading] = useState(false);
   const hasUserSelectedSymbol = useRef(false);
   const searchSeq = useRef(0);
+  const [saving, setSaving] = useState(false);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [indicatorNameToSave, setIndicatorNameToSave] = useState('');
+  const [savedIndicators, setSavedIndicators] = useState<SavedIndicator[]>([]);
+  const [indicatorSignals, setIndicatorSignals] = useState<{ buy: number[]; sell: number[] }>({ buy: [], sell: [] });
+  const [activeIndicator, setActiveIndicator] = useState<string | null>(null);
+
+  const indicatorOptions = useMemo(() => {
+    const saved = savedIndicators.map(ind => ({ id: `saved_${ind.id}`, label: ind.name }));
+    return [...BUILTIN_INDICATORS, ...saved];
+  }, [savedIndicators]);
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
     const debounceTimer = setTimeout(async () => {
@@ -223,6 +247,50 @@ export const StrategyPage: React.FC = () => {
     }
   }, []);
 
+  // Load saved indicators from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('saved_indicators');
+    if (saved) {
+      try {
+        setSavedIndicators(JSON.parse(saved));
+      } catch (e) {
+        console.error('Failed to load saved indicators:', e);
+      }
+    }
+  }, []);
+
+  const handleOpenSaveDialog = () => {
+    const nameMatch = editorCode.match(/my_indicator_name\s*=\s*["']([^"']+)["']/);
+    setIndicatorNameToSave(nameMatch ? nameMatch[1] : '');
+    setSaveDialogOpen(true);
+  };
+
+  const handleConfirmSave = () => {
+    if (!indicatorNameToSave.trim()) return;
+    setSaving(true);
+    setSaveDialogOpen(false);
+    try {
+      const descMatch = editorCode.match(/my_indicator_description\s*=\s*["']([^"']+)["']/);
+      const description = descMatch ? descMatch[1] : '';
+      const newIndicator: SavedIndicator = {
+        id: Date.now(),
+        name: indicatorNameToSave.trim(),
+        description,
+        code: editorCode,
+        createdAt: new Date().toISOString(),
+      };
+      const updated = [...savedIndicators, newIndicator];
+      setSavedIndicators(updated);
+      localStorage.setItem('saved_indicators', JSON.stringify(updated));
+      setMessage({ type: 'success', text: `指标 "${newIndicator.name}" 已保存` });
+    } catch (error) {
+      setGlobalError(error instanceof Error ? error.message : '保存失败');
+    } finally {
+      setSaving(false);
+      setIndicatorNameToSave('');
+    }
+  };
+
   const handleGenerateCode = async () => {
     if (!aiPrompt.trim()) {
       return;
@@ -273,15 +341,11 @@ export const StrategyPage: React.FC = () => {
     );
 
     const indicatorSeries = [];
-    if (selectedIndicators.includes('MA5')) {
-      indicatorSeries.push({ name: 'MA5', type: 'line', data: ma5, smooth: true, showSymbol: false, lineStyle: { width: 1.1, color: '#ffb300' } });
-    }
-    if (selectedIndicators.includes('MA10')) {
-      indicatorSeries.push({ name: 'MA10', type: 'line', data: ma10, smooth: true, showSymbol: false, lineStyle: { width: 1.1, color: '#26a69a' } });
-    }
-    if (selectedIndicators.includes('MA20')) {
-      indicatorSeries.push({ name: 'MA20', type: 'line', data: ma20, smooth: true, showSymbol: false, lineStyle: { width: 1.1, color: '#42a5f5' } });
-    }
+    // MA5, MA10, MA20 always shown by default
+    indicatorSeries.push({ name: 'MA5', type: 'line', data: ma5, smooth: true, showSymbol: false, lineStyle: { width: 1.1, color: '#ffb300' } });
+    indicatorSeries.push({ name: 'MA10', type: 'line', data: ma10, smooth: true, showSymbol: false, lineStyle: { width: 1.1, color: '#26a69a' } });
+    indicatorSeries.push({ name: 'MA20', type: 'line', data: ma20, smooth: true, showSymbol: false, lineStyle: { width: 1.1, color: '#42a5f5' } });
+    // Optional indicators controlled by selector
     if (selectedIndicators.includes('EMA12')) {
       indicatorSeries.push({ name: 'EMA12', type: 'line', data: ema12, smooth: true, showSymbol: false, lineStyle: { width: 1.1, color: '#ff7043' } });
     }
@@ -358,6 +422,24 @@ export const StrategyPage: React.FC = () => {
             borderColor: '#f44336',
             borderColor0: '#26a69a',
           },
+          markPoint: activeIndicator ? {
+            symbol: 'circle',
+            symbolSize: 8,
+            data: [
+              ...indicatorSignals.buy.map(idx => ({
+                coord: [idx, klineData[idx] ? (klineData[idx][2] as number) - 0.5 : (closeValues[idx] as number) - 0.5],
+                value: 'B',
+                itemStyle: { color: '#f44336', fontSize: 12, fontWeight: 'bold' },
+                label: { show: true, position: 'bottom', formatter: 'B', color: '#f44336', fontSize: 12, fontWeight: 'bold' },
+              })),
+              ...indicatorSignals.sell.map(idx => ({
+                coord: [idx, klineData[idx] ? (klineData[idx][3] as number) + 0.5 : (closeValues[idx] as number) + 0.5],
+                value: 'S',
+                itemStyle: { color: '#26a69a', fontSize: 12, fontWeight: 'bold' },
+                label: { show: true, position: 'top', formatter: 'S', color: '#26a69a', fontSize: 12, fontWeight: 'bold' },
+              })),
+            ],
+          } : undefined,
         },
         ...indicatorSeries,
         {
@@ -375,13 +457,21 @@ export const StrategyPage: React.FC = () => {
         },
       ],
     };
-  }, [candles, selectedIndicators]);
+  }, [candles, selectedIndicators, indicatorSignals, activeIndicator]);
 
   return (
     <Box>
-      <Typography variant="h5" sx={{ fontWeight: 700, mb: 2 }}>
-        指标IDE（策略中心）
-      </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+        <Typography variant="h5" sx={{ fontWeight: 700 }}>
+          指标IDE
+        </Typography>
+      </Box>
+
+      {message && (
+        <Alert sx={{ mb: 2 }} severity={message.type} onClose={() => setMessage(null)}>
+          {message.text}
+        </Alert>
+      )}
 
       {globalError && (
         <Alert sx={{ mb: 2 }} severity="error" onClose={() => setGlobalError(null)}>
@@ -395,9 +485,16 @@ export const StrategyPage: React.FC = () => {
             <CardContent>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  指标代码编辑器
+                  指标编辑器
                 </Typography>
-                <Chip icon={<QueryStatsIcon />} size="small" label="Python" />
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Tooltip title="保存指标">
+                    <IconButton onClick={handleOpenSaveDialog} disabled={!editorCode.trim()} size="small" color="primary">
+                      <SaveIcon />
+                    </IconButton>
+                  </Tooltip>
+                  <Chip icon={<QueryStatsIcon />} size="small" label="Python" />
+                </Box>
               </Box>
               <TextField
                 value={editorCode}
@@ -502,9 +599,44 @@ export const StrategyPage: React.FC = () => {
                   <Autocomplete
                     multiple
                     size="small"
-                    options={INDICATOR_OPTIONS}
-                    value={INDICATOR_OPTIONS.filter((item) => selectedIndicators.includes(item.id))}
-                    onChange={(_, next) => setSelectedIndicators(next.map((item) => item.id))}
+                    options={indicatorOptions}
+                    value={indicatorOptions.filter((item) => selectedIndicators.includes(item.id))}
+                    onChange={async (_, next) => {
+                      setSelectedIndicators(next.map((item) => item.id));
+                      // Check if a saved indicator is selected
+                      const savedSelected = next.find(item => item.id.startsWith('saved_'));
+                      if (savedSelected && candles.length > 0) {
+                        const indicatorId = savedSelected.id.replace('saved_', '');
+                        const indicator = savedIndicators.find(ind => ind.id === parseInt(indicatorId));
+                        if (indicator) {
+                          setActiveIndicator(indicator.id.toString());
+                          try {
+                            const data = candles.map(c => ({
+                              trade_date: c.trade_date,
+                              open: c.open,
+                              close: c.close,
+                              high: c.high,
+                              low: c.low,
+                              volume: c.volume,
+                            }));
+                            const response = await fetch(`${API_URL}/strategy/indicator/apply`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ code: indicator.code, data }),
+                            });
+                            if (response.ok) {
+                              const signals = await response.json();
+                              setIndicatorSignals(signals);
+                            }
+                          } catch (err) {
+                            console.error('Failed to apply indicator:', err);
+                          }
+                        }
+                      } else {
+                        setActiveIndicator(null);
+                        setIndicatorSignals({ buy: [], sell: [] });
+                      }
+                    }}
                     getOptionLabel={(item) => item.label}
                     renderInput={(params) => <TextField {...params} label="指标选择器" />}
                   />
@@ -560,6 +692,27 @@ export const StrategyPage: React.FC = () => {
           </Card>
         </Grid>
       </Grid>
+
+      <Dialog open={saveDialogOpen} onClose={() => setSaveDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>保存指标</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            fullWidth
+            label="指标名称"
+            value={indicatorNameToSave}
+            onChange={(e) => setIndicatorNameToSave(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleConfirmSave()}
+            sx={{ mt: 1 }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSaveDialogOpen(false)}>取消</Button>
+          <Button onClick={handleConfirmSave} variant="contained" disabled={!indicatorNameToSave.trim() || saving}>
+            {saving ? '保存中...' : '保存'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

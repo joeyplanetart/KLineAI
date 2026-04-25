@@ -17,6 +17,7 @@ class ConfigCategory(str):
     DATA_VALIDATION = "data_validation"
     CACHE = "cache"
     TASK = "task"
+    LLM = "llm"
 
 
 # Runtime config storage (in-memory for now, can be extended to use Redis/DB)
@@ -122,7 +123,35 @@ CONFIG_DEFINITIONS = {
         "value_type": "number",
         "default": 0.01
     },
+
+    # LLM Settings
+    "LLM_PROVIDER": {
+        "description": "LLM 服务提供商",
+        "category": ConfigCategory.LLM,
+        "is_secret": False,
+        "value_type": "string",
+        "default": ""
+    },
+    "AI_CODE_GEN_MODEL": {
+        "description": "代码生成模型",
+        "category": ConfigCategory.LLM,
+        "is_secret": False,
+        "value_type": "string",
+        "default": ""
+    },
 }
+
+
+# LLM Provider info for UI
+LLM_PROVIDERS = [
+    {"id": "openrouter", "name": "OpenRouter", "models": ["openai/gpt-4o", "openai/gpt-4o-mini", "anthropic/claude-3.5-sonnet", "meta/llama-3.1-70b-instruct"]},
+    {"id": "openai", "name": "OpenAI", "models": ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"]},
+    {"id": "google", "name": "Google Gemini", "models": ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash"]},
+    {"id": "deepseek", "name": "DeepSeek", "models": ["deepseek-chat", "deepseek-coder"]},
+    {"id": "grok", "name": "xAI Grok", "models": ["grok-beta", "grok-2"]},
+    {"id": "minimax", "name": "MiniMax", "models": ["MiniMax-M2.7", "MiniMax-M2.0-Flash"]},
+    {"id": "custom", "name": "自定义", "models": []},
+]
 
 
 def get_current_value(key: str) -> Any:
@@ -273,3 +302,27 @@ def get_runtime_diff():
             })
 
     return {"changed": diffs, "count": len(diffs)}
+
+
+@router.get("/llm/providers")
+def get_llm_providers():
+    """Get available LLM providers and their models"""
+    from app.services.llm import LLMService
+
+    service = LLMService()
+    providers = []
+
+    for p in LLM_PROVIDERS:
+        api_key = service.get_api_key(
+            type("LLMProvider", (), {"value": p["id"]})()
+        ) if p["id"] != "custom" else ""
+        providers.append({
+            **p,
+            "configured": bool(api_key) or p["id"] == "custom",
+        })
+
+    return {
+        "providers": providers,
+        "current_provider": settings.LLM_PROVIDER or service.provider.value,
+        "current_model": settings.AI_CODE_GEN_MODEL or service.get_default_model(),
+    }

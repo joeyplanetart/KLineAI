@@ -29,6 +29,7 @@ import {
   Timeline as TimelineIcon,
   Storage as StorageIcon,
   BarChart as BarChartIcon,
+  Settings as SettingsIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useThemeMode } from '../context/ThemeContext';
@@ -42,6 +43,7 @@ const menuItems = [
   { text: '策略中心', path: '/strategy', icon: <StrategyIcon /> },
   { text: '数据管理', path: '/data-management', icon: <StorageIcon /> },
   { text: '用量统计', path: '/usage', icon: <TimelineIcon /> },
+  { text: '系统配置', path: '/config', icon: <SettingsIcon /> },
 ];
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {

@@ -38,9 +38,9 @@ import { useAuth } from '../context/AuthContext';
 const DRAWER_WIDTH = 240;
 
 const menuItems = [
-  { text: '行情概览', path: '/', icon: <DashboardIcon /> },
+  { text: 'AI分析', path: '/', icon: <DashboardIcon /> },
   { text: '板块指数', path: '/board-index', icon: <BarChartIcon /> },
-  { text: '策略中心', path: '/strategy', icon: <StrategyIcon /> },
+  { text: '指标IDE', path: '/strategy', icon: <StrategyIcon /> },
   { text: '数据管理', path: '/data-management', icon: <StorageIcon /> },
   { text: '用量统计', path: '/usage', icon: <TimelineIcon /> },
   { text: '系统配置', path: '/config', icon: <SettingsIcon /> },

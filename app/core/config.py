@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     LLM_PROVIDER: str = ""  # openrouter|openai|google|deepseek|grok|custom|minimax
     OPENAI_API_KEY: str = ""
     MINIMAX_API_KEY: str = ""
-    MINIMAX_BASE_URL: str = "https://api.minimax.chat/v1"
+    MINIMAX_BASE_URL: str = "https://api.minimaxi.com/v1"
     OPENROUTER_API_KEY: str = ""
     GOOGLE_API_KEY: str = ""
     DEEPSEEK_API_KEY: str = ""

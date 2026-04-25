@@ -40,13 +40,35 @@ class AnalysisResultResponse(BaseModel):
     class Config:
         from_attributes = True
 
-def _run_analysis_task(report_id: int):
+def _run_analysis_task(job_id: str):
     """Synchronous wrapper to run async analysis in thread pool."""
     import asyncio
     import concurrent.futures
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    # Get report_id from job_id
+    from app.core.db import SessionLocal
+    from app.models.analysis import AnalysisReport
+
+    db = SessionLocal()
+    try:
+        report = db.query(AnalysisReport).filter(AnalysisReport.job_id == job_id).first()
+        if not report:
+            logger.error(f"No report found for job_id: {job_id}")
+            return
+        report_id = report.id
+        logger.info(f"Starting background analysis for report_id: {report_id}")
+    finally:
+        db.close()
 
     def _async_run():
-        asyncio.run(analysis_service._run_analysis(report_id))
+        try:
+            asyncio.run(analysis_service._run_analysis(report_id))
+            logger.info(f"Analysis completed for report_id: {report_id}")
+        except Exception as e:
+            logger.error(f"Analysis failed for report_id {report_id}: {e}")
 
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
     executor.submit(_async_run)

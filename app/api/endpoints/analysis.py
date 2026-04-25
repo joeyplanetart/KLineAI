@@ -1,5 +1,5 @@
 """Analysis API endpoints."""
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import Optional
 
@@ -40,14 +40,30 @@ class AnalysisResultResponse(BaseModel):
     class Config:
         from_attributes = True
 
+def _run_analysis_task(report_id: int):
+    """Synchronous wrapper to run async analysis in thread pool."""
+    import asyncio
+    import concurrent.futures
+
+    def _async_run():
+        asyncio.run(analysis_service._run_analysis(report_id))
+
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    executor.submit(_async_run)
+
 @router.post("/{symbol}", response_model=AnalysisResponse)
-def start_analysis(symbol: str, name: Optional[str] = None, db: Session = Depends(get_db)):
+def start_analysis(symbol: str, name: Optional[str] = None, background_tasks: BackgroundTasks = None, db: Session = Depends(get_db)):
     """
     Start a new analysis for a stock symbol.
 
     Returns immediately with job_id for polling.
     """
     job_id = analysis_service.create_analysis(symbol, name)
+
+    # Schedule background analysis using FastAPI's BackgroundTasks
+    if background_tasks:
+        background_tasks.add_task(_run_analysis_task, job_id)
+
     return AnalysisResponse(job_id=job_id, status="pending", symbol=symbol)
 
 @router.get("/status/{job_id}")

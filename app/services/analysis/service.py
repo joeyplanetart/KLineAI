@@ -45,9 +45,6 @@ class AnalysisService:
             db.add(report)
             db.commit()
 
-            # Trigger async analysis in background
-            asyncio.create_task(self._run_analysis(report.id))
-
             return report.job_id
         finally:
             db.close()

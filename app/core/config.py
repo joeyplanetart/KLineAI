@@ -18,9 +18,22 @@ class Settings(BaseSettings):
 
     REDIS_URL: str = "redis://localhost:6379/0"
 
+    # LLM multi-provider configuration
+    LLM_PROVIDER: str = ""  # openrouter|openai|google|deepseek|grok|custom|minimax
     OPENAI_API_KEY: str = ""
     MINIMAX_API_KEY: str = ""
     MINIMAX_BASE_URL: str = "https://api.minimax.chat/v1"
+    OPENROUTER_API_KEY: str = ""
+    GOOGLE_API_KEY: str = ""
+    DEEPSEEK_API_KEY: str = ""
+    GROK_API_KEY: str = ""
+    CUSTOM_API_KEY: str = ""
+    CUSTOM_API_URL: str = ""
+    CUSTOM_MODEL: str = ""
+    AI_CODE_GEN_MODEL: str = ""
+    ENABLE_AI_ENSEMBLE: str = "false"
+    ENABLE_CONFIDENCE_CALIBRATION: str = "false"
+    DEFAULT_ANALYSIS_MARKET: str = "CNStock"
 
     TUSHARE_TOKEN: str = ""  # 可选，Tushare API Token
 

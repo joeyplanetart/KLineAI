@@ -1,0 +1,20 @@
+{
+  "folders": [
+    {
+      "name": "KLineAI",
+      "path": "."
+    },
+    {
+      "name": "QuantDinger (ref)",
+      "path": "/Users/joey/QuantDinger"
+    }
+  ],
+  "settings": {
+    "search.exclude": {
+      "QuantDinger (ref)/frontend/dist": true
+    },
+    "files.watcherExclude": {
+      "QuantDinger (ref)/frontend/dist/**": true
+    }
+  }
+}

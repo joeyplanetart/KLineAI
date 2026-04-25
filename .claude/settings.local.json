@@ -54,7 +54,14 @@
       "Bash(npx vite *)",
       "Bash(awk NR>=843 && NR<=846 *)",
       "Bash(awk 'NR>=838 && NR<=850' /Users/joey/KLineAI/app/api/endpoints/market.py)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(git -C /Users/joey/QuantDinger log --oneline -5)",
+      "Bash(git -C /Users/joey/KLineAI add app/models/analysis.py)",
+      "Bash(git -C /Users/joey/KLineAI commit -m ' *)",
+      "Bash(conda info *)",
+      "Bash(pip show *)",
+      "Bash(./venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000)",
+      "Bash(./venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload)"
     ]
   }
 }

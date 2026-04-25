@@ -1,0 +1,149 @@
+- generic [ref=e22]:
+  - banner [ref=e23]:
+    - generic [ref=e24]:
+      - generic [ref=e25]: KLineAI 量化交易平台
+      - button [ref=e26] [cursor=pointer]:
+        - img [ref=e27]
+      - button [ref=e29] [cursor=pointer]:
+        - img [ref=e30]
+  - navigation [ref=e32]:
+    - generic [ref=e34]:
+      - generic [ref=e36]: KLineAI
+      - list [ref=e37]:
+        - listitem [ref=e38]:
+          - button "行情概览" [ref=e39] [cursor=pointer]:
+            - img [ref=e41]
+            - generic [ref=e44]: 行情概览
+        - listitem [ref=e45]:
+          - button "策略中心" [ref=e46] [cursor=pointer]:
+            - img [ref=e48]
+            - generic [ref=e52]: 策略中心
+        - listitem [ref=e53]:
+          - button "数据管理" [ref=e54] [cursor=pointer]:
+            - img [ref=e56]
+            - generic [ref=e59]: 数据管理
+        - listitem [ref=e60]:
+          - button "用量统计" [ref=e61] [cursor=pointer]:
+            - img [ref=e63]
+            - generic [ref=e66]: 用量统计
+  - main [ref=e67]:
+    - generic [ref=e69]:
+      - generic [ref=e70]:
+        - generic [ref=e142]:
+          - generic [ref=e143]:
+            - img [ref=e145]
+            - paragraph [ref=e147]: 账户总资产
+          - generic [ref=e148]: 112,893.00 CNY
+        - generic [ref=e150]:
+          - generic [ref=e151]:
+            - img [ref=e153]
+            - paragraph [ref=e155]: 今日收益
+          - generic [ref=e156]: +0.00%
+        - generic [ref=e158]:
+          - generic [ref=e159]:
+            - img [ref=e161]
+            - paragraph [ref=e163]: 运行策略数
+          - generic [ref=e164]: "3"
+        - generic [ref=e166]:
+          - generic [ref=e167]:
+            - img [ref=e169]
+            - paragraph [ref=e171]: 待处理风控警告
+          - generic [ref=e172]: "0"
+      - generic [ref=e173]:
+        - generic [ref=e176]:
+          - generic [ref=e177]:
+            - generic [ref=e178]:
+              - paragraph [ref=e179]: 沪深两市成交额
+              - heading "0 亿" [level=5] [ref=e180]
+            - separator [ref=e181]
+            - generic [ref=e182]:
+              - generic [ref=e183]:
+                - paragraph [ref=e184]: 上涨
+                - heading "0" [level=5] [ref=e185]
+              - generic [ref=e186]:
+                - paragraph [ref=e187]: 下跌
+                - heading "0" [level=5] [ref=e188]
+              - generic [ref=e189]:
+                - paragraph [ref=e190]: 持平
+                - heading "0" [level=5] [ref=e191]
+          - separator [ref=e192]
+          - generic [ref=e193]: 港股主要指数（优先 BaoStock；港股不支持则新浪 / 东财，无数据占位）
+          - generic [ref=e194]:
+            - generic [ref=e195]:
+              - generic [ref=e196]: 恒生指数
+              - paragraph [ref=e197]: —
+              - text: —
+            - generic [ref=e198]:
+              - generic [ref=e199]: 恒生科技指数
+              - paragraph [ref=e200]: —
+              - text: —
+            - generic [ref=e201]:
+              - generic [ref=e202]: 国企指数
+              - paragraph [ref=e203]: —
+              - text: —
+        - generic [ref=e206]:
+          - generic [ref=e207]: 主要指数（BaoStock 日线，无数据时占位）
+          - generic [ref=e208]:
+            - generic [ref=e209]:
+              - generic [ref=e210]: 上证指数
+              - paragraph [ref=e211]: —
+              - text: —
+            - generic [ref=e212]:
+              - generic [ref=e213]: 深证成指
+              - paragraph [ref=e214]: —
+              - text: —
+            - generic [ref=e215]:
+              - generic [ref=e216]: 创业板指
+              - paragraph [ref=e217]: —
+              - text: —
+            - generic [ref=e218]:
+              - generic [ref=e219]: 科创50
+              - paragraph [ref=e220]: —
+              - text: —
+            - generic [ref=e221]:
+              - generic [ref=e222]: 沪深300
+              - paragraph [ref=e223]: —
+              - text: —
+            - generic [ref=e224]:
+              - generic [ref=e225]: 中证1000
+              - paragraph [ref=e226]: —
+              - text: —
+            - generic [ref=e227]:
+              - generic [ref=e228]: 富时A50指数期货
+              - paragraph [ref=e229]: —
+              - text: —
+      - generic [ref=e109]:
+        - generic [ref=e110]:
+          - generic [ref=e111]:
+            - generic [ref=e114]:
+              - combobox "搜索股票代码或名称" [ref=e115]: 贵州茅台 (600519.SH)
+              - button "Open" [ref=e241] [cursor=pointer]:
+                - img [ref=e118]
+              - group
+            - button "开始分析" [ref=e242] [cursor=pointer]:
+              - img [ref=e252]
+              - text: 开始分析
+          - generic [ref=e255]:
+            - generic [ref=e256]:
+              - progressbar [ref=e257]:
+                - img [ref=e258]
+              - paragraph [ref=e260]: 等待分析...
+            - progressbar [ref=e261]
+          - generic [ref=e264]:
+            - img [ref=e266]
+            - heading "AI 智能分析引擎" [level=6] [ref=e269]
+            - paragraph [ref=e270]: 多维数据驱动 · 量化级别洞察 · 实时市场脉搏
+            - button "开始分析" [ref=e271] [cursor=pointer]:
+              - img [ref=e273]
+              - text: 开始分析
+        - generic [ref=e127]:
+          - generic [ref=e128]:
+            - generic [ref=e129]:
+              - img [ref=e130]
+              - heading "我的自选股" [level=6] [ref=e132]
+              - generic [ref=e134]: "0"
+            - button [ref=e135] [cursor=pointer]:
+              - img [ref=e136]
+          - generic [ref=e139]:
+            - paragraph [ref=e140]: 自选股为空
+            - text: 分析股票后将自动添加到这里

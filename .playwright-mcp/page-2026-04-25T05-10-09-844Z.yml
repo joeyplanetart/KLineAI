@@ -1,0 +1,95 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]: KLineAI 量化交易平台
+      - button [ref=e7] [cursor=pointer]:
+        - img [ref=e8]
+      - button [ref=e10] [cursor=pointer]:
+        - img [ref=e11]
+  - navigation [ref=e13]:
+    - generic [ref=e15]:
+      - generic [ref=e17]: KLineAI
+      - list [ref=e18]:
+        - listitem [ref=e19]:
+          - button "行情概览" [ref=e20] [cursor=pointer]:
+            - img [ref=e22]
+            - generic [ref=e25]: 行情概览
+        - listitem [ref=e26]:
+          - button "板块指数" [ref=e27] [cursor=pointer]:
+            - img [ref=e29]
+            - generic [ref=e32]: 板块指数
+        - listitem [ref=e33]:
+          - button "策略中心" [ref=e34] [cursor=pointer]:
+            - img [ref=e36]
+            - generic [ref=e40]: 策略中心
+        - listitem [ref=e41]:
+          - button "数据管理" [ref=e42] [cursor=pointer]:
+            - img [ref=e44]
+            - generic [ref=e47]: 数据管理
+        - listitem [ref=e48]:
+          - button "用量统计" [ref=e49] [cursor=pointer]:
+            - img [ref=e51]
+            - generic [ref=e54]: 用量统计
+  - main [ref=e55]:
+    - generic [ref=e57]:
+      - generic [ref=e58]:
+        - generic [ref=e61]:
+          - generic [ref=e62]:
+            - img [ref=e64]
+            - paragraph [ref=e66]: 账户总资产
+          - generic [ref=e67]: 112,893.00 CNY
+        - generic [ref=e70]:
+          - generic [ref=e71]:
+            - img [ref=e73]
+            - paragraph [ref=e75]: 今日收益
+          - generic [ref=e76]: +0.00%
+        - generic [ref=e79]:
+          - generic [ref=e80]:
+            - img [ref=e82]
+            - paragraph [ref=e84]: 运行策略数
+          - generic [ref=e85]: "3"
+        - generic [ref=e88]:
+          - generic [ref=e89]:
+            - img [ref=e91]
+            - paragraph [ref=e93]: 待处理风控警告
+          - generic [ref=e94]: "0"
+      - generic [ref=e97]:
+        - generic [ref=e98]:
+          - generic [ref=e100]:
+            - generic [ref=e103]:
+              - combobox "搜索股票代码或名称" [ref=e104]
+              - button "Open" [ref=e106] [cursor=pointer]:
+                - img [ref=e107]
+              - group
+            - button "开始分析" [disabled]:
+              - generic:
+                - img
+              - text: 开始分析
+          - generic [ref=e109]:
+            - img [ref=e111]
+            - heading "AI 智能分析引擎" [level=6] [ref=e114]
+            - paragraph [ref=e115]: 多维数据驱动 · 量化级别洞察 · 实时市场脉搏
+            - button "开始分析" [disabled]:
+              - generic:
+                - img
+              - text: 开始分析
+        - generic [ref=e116]:
+          - generic [ref=e117]:
+            - generic [ref=e118]:
+              - img [ref=e119]
+              - heading "我的自选股" [level=6] [ref=e121]
+              - generic [ref=e123]: "1"
+            - button [ref=e124] [cursor=pointer]:
+              - img [ref=e125]
+          - list [ref=e128]:
+            - listitem [ref=e129]:
+              - button "锴威特 HOLD 688693 45分" [ref=e130] [cursor=pointer]:
+                - generic [ref=e131]:
+                  - generic [ref=e132]:
+                    - paragraph [ref=e133]: 锴威特
+                    - generic [ref=e135]: HOLD
+                  - generic [ref=e136]:
+                    - generic [ref=e137]: "688693"
+                    - generic [ref=e138]: 45分
+              - button [ref=e140] [cursor=pointer]:
+                - img [ref=e141]

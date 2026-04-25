@@ -1,0 +1,37 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]: KLineAI 量化交易平台
+      - button [ref=e7] [cursor=pointer]:
+        - img [ref=e8]
+      - button [ref=e10] [cursor=pointer]:
+        - img [ref=e11]
+  - navigation [ref=e13]:
+    - generic [ref=e15]:
+      - generic [ref=e17]: KLineAI
+      - list [ref=e18]:
+        - listitem [ref=e19]:
+          - button "行情概览" [ref=e20] [cursor=pointer]:
+            - img [ref=e22]
+            - generic [ref=e25]: 行情概览
+        - listitem [ref=e26]:
+          - button "板块指数" [active] [ref=e27] [cursor=pointer]:
+            - img [ref=e29]
+            - generic [ref=e32]: 板块指数
+        - listitem [ref=e33]:
+          - button "策略中心" [ref=e34] [cursor=pointer]:
+            - img [ref=e36]
+            - generic [ref=e40]: 策略中心
+        - listitem [ref=e41]:
+          - button "数据管理" [ref=e42] [cursor=pointer]:
+            - img [ref=e44]
+            - generic [ref=e47]: 数据管理
+        - listitem [ref=e48]:
+          - button "用量统计" [ref=e49] [cursor=pointer]:
+            - img [ref=e51]
+            - generic [ref=e54]: 用量统计
+  - main [ref=e55]:
+    - generic [ref=e175]:
+      - heading "板块指数" [level=5] [ref=e176]
+      - progressbar [ref=e178]:
+        - img [ref=e179]

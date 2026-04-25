@@ -1,0 +1,82 @@
+- generic [ref=e22]:
+  - banner [ref=e23]:
+    - generic [ref=e24]:
+      - generic [ref=e25]: KLineAI 量化交易平台
+      - button [ref=e26] [cursor=pointer]:
+        - img [ref=e27]
+      - button [ref=e29] [cursor=pointer]:
+        - img [ref=e30]
+  - navigation [ref=e32]:
+    - generic [ref=e34]:
+      - generic [ref=e36]: KLineAI
+      - list [ref=e37]:
+        - listitem [ref=e38]:
+          - button "行情概览" [ref=e39] [cursor=pointer]:
+            - img [ref=e41]
+            - generic [ref=e44]: 行情概览
+        - listitem [ref=e45]:
+          - button "策略中心" [ref=e46] [cursor=pointer]:
+            - img [ref=e48]
+            - generic [ref=e52]: 策略中心
+        - listitem [ref=e53]:
+          - button "数据管理" [ref=e54] [cursor=pointer]:
+            - img [ref=e56]
+            - generic [ref=e59]: 数据管理
+        - listitem [ref=e60]:
+          - button "用量统计" [ref=e61] [cursor=pointer]:
+            - img [ref=e63]
+            - generic [ref=e66]: 用量统计
+  - main [ref=e67]:
+    - generic [ref=e69]:
+      - generic [ref=e70]:
+        - generic [ref=e73]:
+          - generic [ref=e74]:
+            - img [ref=e76]
+            - paragraph [ref=e78]: 账户总资产
+          - generic [ref=e79]: 112,893.00 CNY
+        - generic [ref=e82]:
+          - generic [ref=e83]:
+            - img [ref=e85]
+            - paragraph [ref=e87]: 今日收益
+          - generic [ref=e88]: +0.00%
+        - generic [ref=e91]:
+          - generic [ref=e92]:
+            - img [ref=e94]
+            - paragraph [ref=e96]: 运行策略数
+          - generic [ref=e97]: "3"
+        - generic [ref=e100]:
+          - generic [ref=e101]:
+            - img [ref=e103]
+            - paragraph [ref=e105]: 待处理风控警告
+          - generic [ref=e106]: "0"
+      - generic [ref=e109]:
+        - generic [ref=e110]:
+          - generic [ref=e111]:
+            - generic [ref=e114]:
+              - combobox "搜索股票代码或名称" [ref=e115]
+              - button "Open" [ref=e117] [cursor=pointer]:
+                - img [ref=e118]
+              - group
+            - button "开始分析" [disabled]:
+              - generic:
+                - img
+              - text: 开始分析
+          - generic [ref=e120]:
+            - img [ref=e122]
+            - heading "AI 智能分析引擎" [level=6] [ref=e125]
+            - paragraph [ref=e126]: 多维数据驱动 · 量化级别洞察 · 实时市场脉搏
+            - button "开始分析" [disabled]:
+              - generic:
+                - img
+              - text: 开始分析
+        - generic [ref=e127]:
+          - generic [ref=e128]:
+            - generic [ref=e129]:
+              - img [ref=e130]
+              - heading "我的自选股" [level=6] [ref=e132]
+              - generic [ref=e134]: "0"
+            - button [ref=e135] [cursor=pointer]:
+              - img [ref=e136]
+          - generic [ref=e139]:
+            - paragraph [ref=e140]: 自选股为空
+            - text: 分析股票后将自动添加到这里

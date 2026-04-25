@@ -148,13 +148,28 @@ def fetch_and_save_daily_data(
             # 更新前一日收盘价，供下一日计算涨跌幅
             prev_close = close_price
 
-        # 插入数据库
+        # 插入数据库 (upsert - 覆盖已存在的记录)
         for record in records:
             existing = db.query(StockDaily).filter(
                 StockDaily.symbol == record.symbol,
                 StockDaily.trade_date == record.trade_date
             ).first()
-            if not existing:
+            if existing:
+                # 更新已存在的记录
+                existing.open = record.open
+                existing.close = record.close
+                existing.high = record.high
+                existing.low = record.low
+                existing.volume = record.volume
+                existing.amount = record.amount
+                existing.change_amount = record.change_amount
+                existing.pct_change = record.pct_change
+                existing.turnover_rate = record.turnover_rate
+                existing.amplitude = record.amplitude
+                existing.is_validated = record.is_validated
+                existing.has_anomaly = record.has_anomaly
+                existing.anomaly_details = record.anomaly_details
+            else:
                 db.add(record)
 
         db.commit()

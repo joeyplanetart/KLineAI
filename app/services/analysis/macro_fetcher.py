@@ -40,7 +40,7 @@ class MacroFetcher:
             logger.warning(f"Failed to get US bond yield: {e}")
         return None
 
-    def get_news_sentiment(self, symbol: str = None) -> Optional[Dict]:
+    def get_news_sentiment(self, symbol: Optional[str] = None) -> Optional[Dict]:
         """Get news sentiment for a symbol or market overall."""
         # Placeholder for news sentiment - can be expanded later
         return None

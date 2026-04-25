@@ -16,9 +16,12 @@ import {
   ListItemIcon as ListItemIconBase,
   Divider,
   Button,
+  Tooltip,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
+  ChevronLeft as ChevronLeftIcon,
+  ChevronRight as ChevronRightIcon,
   Dashboard as DashboardIcon,
   Psychology as StrategyIcon,
   Brightness4 as Brightness4Icon,
@@ -36,6 +39,7 @@ import { useThemeMode } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 
 const DRAWER_WIDTH = 240;
+const COLLAPSED_WIDTH = 72;
 
 const menuItems = [
   { text: 'AI分析', path: '/', icon: <DashboardIcon /> },
@@ -48,6 +52,7 @@ const menuItems = [
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const navigate = useNavigate();
   const location = useLocation();
@@ -56,6 +61,10 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
+  };
+
+  const handleCollapseToggle = () => {
+    setCollapsed(!collapsed);
   };
 
   const handleUserMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
@@ -71,23 +80,45 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     logout();
   };
 
+  const drawerWidth = collapsed ? COLLAPSED_WIDTH : DRAWER_WIDTH;
+
   const drawer = (
-    <Box>
-      <Toolbar>
-        <Typography variant="h6" noWrap component="div">
-          KLineAI
-        </Typography>
-      </Toolbar>
-      <List>
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'space-between', px: collapsed ? 0 : 2, minHeight: 64 }}>
+        {!collapsed && (
+          <Typography variant="h6" noWrap component="div" sx={{ fontWeight: 700 }}>
+            KLineAI
+          </Typography>
+        )}
+        <IconButton onClick={handleCollapseToggle} size="small" sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.1)', borderRadius: 1, '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' }, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {collapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
+        </IconButton>
+      </Box>
+      <List sx={{ flexGrow: 1, pt: 0 }}>
         {menuItems.map((item) => (
-          <ListItem key={item.text} disablePadding>
-            <ListItemButton
-              onClick={() => navigate(item.path)}
-              selected={location.pathname === item.path}
-            >
-              <ListItemIcon>{item.icon}</ListItemIcon>
-              <ListItemText primary={item.text} />
-            </ListItemButton>
+          <ListItem key={item.text} disablePadding sx={{ display: 'block' }}>
+            <Tooltip title={collapsed ? item.text : ''} placement="right">
+              <ListItemButton
+                onClick={() => navigate(item.path)}
+                selected={location.pathname === item.path}
+                sx={{
+                  minHeight: 48,
+                  justifyContent: collapsed ? 'center' : 'initial',
+                  px: 2.5,
+                }}
+              >
+                <ListItemIcon
+                  sx={{
+                    minWidth: 0,
+                    mr: collapsed ? 0 : 2,
+                    justifyContent: 'center',
+                  }}
+                >
+                  {item.icon}
+                </ListItemIcon>
+                {!collapsed && <ListItemText primary={item.text} />}
+              </ListItemButton>
+            </Tooltip>
           </ListItem>
         ))}
       </List>
@@ -152,7 +183,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         </Toolbar>
       </AppBar>
 
-      <Box component="nav" sx={{ width: { sm: DRAWER_WIDTH }, flexShrink: { sm: 0 } }}>
+      <Box component="nav" sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 }, transition: 'width 0.2s' }}>
         <Drawer
           variant="temporary"
           open={mobileOpen}
@@ -169,7 +200,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           variant="permanent"
           sx={{
             display: { xs: 'none', sm: 'block' },
-            '& .MuiDrawer-paper': { width: DRAWER_WIDTH, boxSizing: 'border-box' },
+            '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box', transition: 'width 0.2s', overflowX: 'hidden', bgcolor: 'background.paper' },
           }}
           open
         >
@@ -179,7 +210,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
       <Box
         component="main"
-        sx={{ flexGrow: 1, p: 3, width: { sm: `calc(100% - ${DRAWER_WIDTH}px)` } }}
+        sx={{ flexGrow: 1, p: 3, width: { sm: `calc(100% - ${drawerWidth}px)` }, transition: 'width 0.2s' }}
       >
         <Toolbar />
         {children}

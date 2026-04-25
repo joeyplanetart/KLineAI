@@ -197,6 +197,32 @@ export const StrategyPage: React.FC = () => {
     setSelectedSymbol(symbolOptions[0]);
   }, [symbolOptions, selectedSymbol]);
 
+  // Load from watchlist on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('ai_analysis_watchlist');
+    if (saved) {
+      try {
+        const watchlist = JSON.parse(saved);
+        if (watchlist.length > 0) {
+          const recent = watchlist[watchlist.length - 1];
+          const code = recent.symbol.replace(/^(sz|sh)/i, '');
+          const exchange = recent.symbol.toLowerCase().startsWith('sh') ? 'SH' : 'SZ';
+          const stockOption: StockOption = {
+            code,
+            name: recent.name,
+            search_key: `${recent.name} (${code}.${exchange})`,
+          };
+          setSelectedSymbol(stockOption);
+          hasUserSelectedSymbol.current = true;
+          setSymbolKeyword(code);
+          setSymbolOptions([stockOption]);
+        }
+      } catch (e) {
+        console.error('Failed to load watchlist:', e);
+      }
+    }
+  }, []);
+
   const handleGenerateCode = async () => {
     if (!aiPrompt.trim()) {
       return;

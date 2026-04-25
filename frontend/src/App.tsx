@@ -13,6 +13,7 @@ import { UsagePage } from './pages/usage';
 import { DataManagementPage } from './pages/data_management';
 import { BoardIndexPage } from './pages/board_index';
 import { ConfigPage } from './pages/config';
+import { IndicatorSquarePage } from './pages/indicator_square';
 import { NotFound } from './components/NotFound';
 
 const App: React.FC = () => {
@@ -40,6 +41,17 @@ const App: React.FC = () => {
                 <ProtectedRoute>
                   <Layout>
                     <StrategyPage />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/indicator-square"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <IndicatorSquarePage />
                   </Layout>
                 </ProtectedRoute>
               }

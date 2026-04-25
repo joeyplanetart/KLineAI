@@ -257,7 +257,128 @@ export const StrategyPage: React.FC = () => {
         console.error('Failed to load saved indicators:', e);
       }
     }
-  }, []);
+
+    // Check for pending indicator to apply to editor
+    const pendingEditor = localStorage.getItem('indicator_to_apply_to_editor');
+    if (pendingEditor) {
+      try {
+        const { code, name } = JSON.parse(pendingEditor);
+        setEditorCode(code);
+        setMessage({ type: 'success', text: `指标 "${name}" 已应用` });
+        localStorage.removeItem('indicator_to_apply_to_editor');
+      } catch (e) {
+        console.error('Failed to apply indicator:', e);
+      }
+    }
+
+    // Check for pending indicator to apply to selector
+    const pendingSelector = localStorage.getItem('indicator_to_apply_to_selector');
+    if (pendingSelector) {
+      localStorage.removeItem('indicator_to_apply_to_selector');
+      try {
+        const { id, name } = JSON.parse(pendingSelector);
+        // Store pending apply info for dedicated effect to process after candles load
+        localStorage.setItem('pending_indicator_apply', JSON.stringify({ id }));
+        setActiveIndicator(id + '_pending');
+        setMessage({ type: 'success', text: `指标 "${name}" 已应用` });
+      } catch (e) {
+        console.error('Failed to apply indicator to selector:', e);
+      }
+    }
+  }, []); // Empty deps - run once on mount
+
+  // Fetch signals when activeIndicator changes
+  useEffect(() => {
+    if (!activeIndicator || activeIndicator.endsWith('_pending')) return;
+    if (candles.length === 0) return;
+
+    const fetchSignals = () => {
+      // Check if it's a saved indicator
+      if (activeIndicator.startsWith('saved_')) {
+        const indicatorId = parseInt(activeIndicator.replace('saved_', ''));
+        const indicator = savedIndicators.find(ind => ind.id === indicatorId);
+        if (indicator) {
+          const data = candles.map(c => ({
+            trade_date: c.trade_date,
+            open: c.open,
+            close: c.close,
+            high: c.high,
+            low: c.low,
+            volume: c.volume,
+          }));
+          fetch(`${API_URL}/strategy/indicator/apply`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code: indicator.code, data }),
+          }).then(res => res.json()).then(signals => {
+            setIndicatorSignals(signals);
+          });
+        }
+      } else {
+        // Check if it's a builtin or custom indicator with stored code
+        const indicatorCodes = JSON.parse(localStorage.getItem('indicator_codes') || '{}');
+        const code = indicatorCodes[activeIndicator];
+        if (code) {
+          const data = candles.map(c => ({
+            trade_date: c.trade_date,
+            open: c.open,
+            close: c.close,
+            high: c.high,
+            low: c.low,
+            volume: c.volume,
+          }));
+          fetch(`${API_URL}/strategy/indicator/apply`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code, data }),
+          }).then(res => res.json()).then(signals => {
+            setIndicatorSignals(signals);
+          });
+        }
+      }
+    };
+
+    fetchSignals();
+  }, [activeIndicator, candles.length, savedIndicators]);
+
+  // Dedicated effect to fetch signals when indicator is applied from indicator square
+  // This handles the case where candles aren't loaded yet when indicator_to_apply_to_selector is processed
+  // Also handles case where candles weren't loaded when pending_indicator_apply was set
+  useEffect(() => {
+    const pendingApply = localStorage.getItem('pending_indicator_apply');
+    if (!pendingApply) return;
+
+    // If activeIndicator still has _pending suffix, it means we haven't fetched signals yet
+    if (activeIndicator && activeIndicator.endsWith('_pending')) {
+      // This means candles weren't loaded when we tried to apply indicator
+      // Now candles are loaded, fetch signals
+      const { id } = JSON.parse(pendingApply);
+      localStorage.removeItem('pending_indicator_apply');
+
+      // Get the code from indicator_codes localStorage (set by indicator square before navigation)
+      const indicatorCodes = JSON.parse(localStorage.getItem('indicator_codes') || '{}');
+      const code = indicatorCodes[id];
+      if (!code) return;
+
+      const data = candles.map(c => ({
+        trade_date: c.trade_date,
+        open: c.open,
+        close: c.close,
+        high: c.high,
+        low: c.low,
+        volume: c.volume,
+      }));
+      fetch(`${API_URL}/strategy/indicator/apply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, data }),
+      }).then(res => res.json()).then(signals => {
+        setIndicatorSignals(signals);
+        setActiveIndicator(id);
+        setSelectedIndicators(prev => prev.includes(id) ? prev : [...prev, id]);
+      });
+    }
+  }, [candles.length]); // Only candles.length - activeIndicator is read-only here to avoid infinite loops
 
   const handleOpenSaveDialog = () => {
     const nameMatch = editorCode.match(/my_indicator_name\s*=\s*["']([^"']+)["']/);

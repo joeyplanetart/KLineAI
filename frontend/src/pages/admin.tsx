@@ -1,9 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box,
-  Typography,
-  Card,
-  CardContent,
   Table,
   TableBody,
   TableCell,
@@ -34,7 +31,6 @@ import {
   MoreVert as MoreVertIcon,
   Add as AddIcon,
   Delete as DeleteIcon,
-  Edit as EditIcon,
   AdminPanelSettings as AdminIcon,
   Person as PersonIcon,
 } from '@mui/icons-material';
@@ -187,10 +183,9 @@ export const AdminPage: React.FC = () => {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h5">User Management</Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 3 }}>
         <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateDialogOpen(true)}>
-          Add User
+          添加用户
         </Button>
       </Box>
 

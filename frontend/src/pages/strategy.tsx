@@ -235,12 +235,12 @@ export const StrategyPage: React.FC = () => {
       const buyIndices = backtestBuySignals.map((date: string) => {
         const idx = candles.findIndex(c => c.trade_date === date);
         return idx;
-      }).filter(idx => idx >= 0);
+      }).filter((idx: number) => idx >= 0);
 
       const sellIndices = backtestSellSignals.map((date: string) => {
         const idx = candles.findIndex(c => c.trade_date === date);
         return idx;
-      }).filter(idx => idx >= 0);
+      }).filter((idx: number) => idx >= 0);
 
       return normalizeSignalIndices(buyIndices, sellIndices);
     }
@@ -715,11 +715,6 @@ export const StrategyPage: React.FC = () => {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-        <Typography variant="h5" sx={{ fontWeight: 700 }}>
-          指标IDE
-        </Typography>
-      </Box>
 
       {message && (
         <Alert sx={{ mb: 2 }} severity={message.type} onClose={() => setMessage(null)}>

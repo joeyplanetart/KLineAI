@@ -17,6 +17,7 @@ import {
   Divider,
   Button,
   Tooltip,
+  Avatar,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -39,7 +40,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useThemeMode } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 
-const DRAWER_WIDTH = 240;
+const DRAWER_WIDTH = 256;
 const COLLAPSED_WIDTH = 72;
 
 const menuItems = [
@@ -51,6 +52,11 @@ const menuItems = [
   { text: '用量统计', path: '/usage', icon: <TimelineIcon /> },
   { text: '系统配置', path: '/config', icon: <SettingsIcon /> },
 ];
+
+function pageTitleForPath(pathname: string): string {
+  const hit = menuItems.find((item) => item.path === pathname);
+  return hit?.text ?? 'KLineAI';
+}
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -83,30 +89,91 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   };
 
   const drawerWidth = collapsed ? COLLAPSED_WIDTH : DRAWER_WIDTH;
+  const appBarTitle = pageTitleForPath(location.pathname);
 
   const drawer = (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'space-between', px: collapsed ? 0 : 2, minHeight: 64 }}>
-        {!collapsed && (
-          <Typography variant="h6" noWrap component="div" sx={{ fontWeight: 700 }}>
-            KLineAI
-          </Typography>
+      <Toolbar
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: collapsed ? 'center' : 'space-between',
+          px: collapsed ? 0 : 1.5,
+          minHeight: 56,
+        }}
+      >
+        {!collapsed ? (
+          <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 1, minWidth: 0, pl: 0.5 }}>
+            <Box
+              sx={{
+                width: 32,
+                height: 32,
+                borderRadius: 1,
+                bgcolor: 'primary.main',
+                color: 'primary.contrastText',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 700,
+                fontSize: 14,
+                flexShrink: 0,
+              }}
+            >
+              K
+            </Box>
+            <Typography variant="subtitle1" noWrap sx={{ fontWeight: 700 }}>
+              KLineAI
+            </Typography>
+          </Box>
+        ) : (
+          <Box
+            sx={{
+              width: 32,
+              height: 32,
+              borderRadius: 1,
+              bgcolor: 'primary.main',
+              color: 'primary.contrastText',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 700,
+              fontSize: 14,
+            }}
+          >
+            K
+          </Box>
         )}
-        <IconButton onClick={handleCollapseToggle} size="small" sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.1)', borderRadius: 1, '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' }, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {collapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
+        <IconButton
+          onClick={handleCollapseToggle}
+          size="small"
+          sx={{
+            display: { xs: 'none', sm: 'inline-flex' },
+            color: 'text.secondary',
+            borderRadius: 1,
+            border: 1,
+            borderColor: 'divider',
+            width: 32,
+            height: 32,
+          }}
+        >
+          {collapsed ? <ChevronRightIcon fontSize="small" /> : <ChevronLeftIcon fontSize="small" />}
         </IconButton>
-      </Box>
-      <List sx={{ flexGrow: 1, pt: 0 }}>
+      </Toolbar>
+      <Divider />
+      <List sx={{ flexGrow: 1, py: 1.5, px: 0.5 }}>
         {menuItems.map((item) => (
-          <ListItem key={item.text} disablePadding sx={{ display: 'block' }}>
+          <ListItem key={item.text} disablePadding sx={{ display: 'block', mb: 0.25 }}>
             <Tooltip title={collapsed ? item.text : ''} placement="right">
               <ListItemButton
-                onClick={() => navigate(item.path)}
+                onClick={() => {
+                  navigate(item.path);
+                  setMobileOpen(false);
+                }}
                 selected={location.pathname === item.path}
                 sx={{
-                  minHeight: 48,
-                  justifyContent: collapsed ? 'center' : 'initial',
-                  px: 2.5,
+                  minHeight: 44,
+                  justifyContent: collapsed ? 'center' : 'flex-start',
+                  px: collapsed ? 0 : 1.5,
                 }}
               >
                 <ListItemIcon
@@ -114,41 +181,76 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                     minWidth: 0,
                     mr: collapsed ? 0 : 2,
                     justifyContent: 'center',
+                    color: location.pathname === item.path ? 'primary.main' : 'text.secondary',
                   }}
                 >
                   {item.icon}
                 </ListItemIcon>
-                {!collapsed && <ListItemText primary={item.text} />}
+                {!collapsed && (
+                  <ListItemText
+                    primary={item.text}
+                    slotProps={{ primary: { variant: 'body2', sx: { fontWeight: 500 } } }}
+                  />
+                )}
               </ListItemButton>
             </Tooltip>
           </ListItem>
         ))}
       </List>
+
+      {isAuthenticated && user && !collapsed && (
+        <>
+          <Divider />
+          <Box sx={{ p: 2 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 1.5 }}>
+              <Avatar sx={{ width: 36, height: 36, bgcolor: 'primary.main', fontSize: 14 }}>
+                {user.username?.charAt(0).toUpperCase() ?? '?'}
+              </Avatar>
+              <Box sx={{ minWidth: 0 }}>
+                <Typography variant="subtitle2" noWrap>
+                  {user.username}
+                </Typography>
+                <Typography variant="caption" color="text.secondary" noWrap>
+                  {user.role === 'admin' ? '管理员' : '用户'}
+                </Typography>
+              </Box>
+            </Box>
+          </Box>
+        </>
+      )}
     </Box>
   );
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
-      <AppBar position="fixed" sx={{ zIndex: (t) => t.zIndex.drawer + 1 }}>
-        <Toolbar>
+      <AppBar
+        position="fixed"
+        sx={{
+          width: { xs: '100%', sm: `calc(100% - ${drawerWidth}px)` },
+          ml: { xs: 0, sm: `${drawerWidth}px` },
+          transition: 'width 0.2s, margin 0.2s',
+          zIndex: (t) => t.zIndex.drawer + 1,
+        }}
+      >
+        <Toolbar variant="dense" sx={{ minHeight: 56, gap: 1 }}>
           <IconButton
-            color="inherit"
             edge="start"
             onClick={handleDrawerToggle}
-            sx={{ mr: 2, display: { sm: 'none' } }}
+            sx={{ mr: 1, display: { sm: 'none' }, color: 'text.primary' }}
+            aria-label="open menu"
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            KLineAI 量化交易平台
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 600, color: 'text.primary' }}>
+            {appBarTitle}
           </Typography>
-          <IconButton color="inherit" onClick={toggleTheme}>
+          <IconButton onClick={toggleTheme} size="small" sx={{ color: 'text.secondary' }}>
             {mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
           </IconButton>
 
           {isAuthenticated ? (
             <>
-              <IconButton color="inherit" onClick={handleUserMenuOpen}>
+              <IconButton onClick={handleUserMenuOpen} size="small" sx={{ color: 'text.secondary' }}>
                 <AccountCircleIcon />
               </IconButton>
               <Menu
@@ -166,20 +268,29 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                 </MenuItem>
                 <Divider />
                 {user?.role === 'admin' && (
-                  <MenuItem onClick={() => { handleUserMenuClose(); navigate('/admin'); }}>
-                    <ListItemIconBase><AdminIcon /></ListItemIconBase>
-                    <ListItemText primary="Admin Panel" />
+                  <MenuItem
+                    onClick={() => {
+                      handleUserMenuClose();
+                      navigate('/admin');
+                    }}
+                  >
+                    <ListItemIconBase>
+                      <AdminIcon fontSize="small" />
+                    </ListItemIconBase>
+                    <ListItemText primary="管理后台" />
                   </MenuItem>
                 )}
                 <MenuItem onClick={handleLogout}>
-                  <ListItemIconBase><LogoutIcon /></ListItemIconBase>
-                  <ListItemText primary="Logout" />
+                  <ListItemIconBase>
+                    <LogoutIcon fontSize="small" />
+                  </ListItemIconBase>
+                  <ListItemText primary="退出登录" />
                 </MenuItem>
               </Menu>
             </>
           ) : (
-            <Button color="inherit" onClick={() => navigate('/login')}>
-              Login
+            <Button color="primary" variant="text" onClick={() => navigate('/login')} sx={{ fontWeight: 600 }}>
+              登录
             </Button>
           )}
         </Toolbar>
@@ -193,7 +304,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           ModalProps={{ keepMounted: true }}
           sx={{
             display: { xs: 'block', sm: 'none' },
-            '& .MuiDrawer-paper': { width: DRAWER_WIDTH },
+            '& .MuiDrawer-paper': { width: DRAWER_WIDTH, boxSizing: 'border-box' },
           }}
         >
           {drawer}
@@ -202,7 +313,13 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           variant="permanent"
           sx={{
             display: { xs: 'none', sm: 'block' },
-            '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box', transition: 'width 0.2s', overflowX: 'hidden', bgcolor: 'background.paper' },
+            '& .MuiDrawer-paper': {
+              width: drawerWidth,
+              boxSizing: 'border-box',
+              transition: 'width 0.2s',
+              overflowX: 'hidden',
+              bgcolor: 'background.paper',
+            },
           }}
           open
         >
@@ -212,10 +329,16 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
       <Box
         component="main"
-        sx={{ flexGrow: 1, p: 3, width: { sm: `calc(100% - ${drawerWidth}px)` }, transition: 'width 0.2s' }}
+        sx={{
+          flexGrow: 1,
+          width: { sm: `calc(100% - ${drawerWidth}px)` },
+          minHeight: '100vh',
+          bgcolor: 'background.default',
+          transition: 'width 0.2s',
+        }}
       >
-        <Toolbar />
-        {children}
+        <Toolbar sx={{ minHeight: 56 }} />
+        <Box sx={{ p: { xs: 2, sm: 3 }, pb: 4 }}>{children}</Box>
       </Box>
     </Box>
   );

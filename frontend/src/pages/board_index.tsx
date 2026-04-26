@@ -10,7 +10,6 @@ import {
   TrendingUp as TrendingUpIcon,
   TrendingDown as TrendingDownIcon,
 } from '@mui/icons-material';
-import ReactECharts from 'echarts-for-react';
 
 const API_URL = 'http://localhost:8000/api/v1';
 
@@ -57,9 +56,6 @@ export const BoardIndexPage: React.FC = () => {
 
   return (
     <Box>
-      <Typography variant="h5" sx={{ mb: 3, fontWeight: 600 }}>
-        板块指数
-      </Typography>
 
       {loading && !marketOverview ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
@@ -82,7 +78,7 @@ export const BoardIndexPage: React.FC = () => {
                   <Typography color="textSecondary" variant="body2" gutterBottom>
                     沪深两市成交额
                   </Typography>
-                  <Typography variant="h5" sx={{ fontWeight: 500, color: '#1890ff' }}>
+                  <Typography variant="h5" sx={{ fontWeight: 500, color: 'primary.main' }}>
                     {marketOverview.total_amount.toLocaleString()} 亿
                   </Typography>
                 </Box>

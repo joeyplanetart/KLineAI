@@ -19,6 +19,7 @@ import {
   Settings as SettingsIcon,
   SmartToy as SmartToyIcon,
 } from '@mui/icons-material';
+import { alpha } from '@mui/material/styles';
 
 const API_URL = 'http://localhost:8000/api/v1';
 
@@ -118,9 +119,6 @@ export const ConfigPage: React.FC = () => {
 
   return (
     <Box>
-      <Typography variant="h5" sx={{ mb: 3, fontWeight: 600 }}>
-        系统配置
-      </Typography>
 
       {message && (
         <Alert severity={message.type} sx={{ mb: 3 }} onClose={() => setMessage(null)}>
@@ -132,7 +130,7 @@ export const ConfigPage: React.FC = () => {
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-            <SmartToyIcon sx={{ color: '#1890ff' }} />
+            <SmartToyIcon color="primary" />
             <Typography variant="h6" sx={{ fontWeight: 600 }}>
               AI 模型配置
             </Typography>
@@ -207,7 +205,10 @@ export const ConfigPage: React.FC = () => {
               <Chip
                 label={`当前: ${llmConfig.current_provider} / ${llmConfig.current_model}`}
                 size="small"
-                sx={{ bgcolor: '#1890ff15', color: '#1890ff' }}
+                sx={(theme) => ({
+                  bgcolor: alpha(theme.palette.primary.main, 0.12),
+                  color: 'primary.main',
+                })}
               />
             )}
           </Box>
@@ -225,13 +226,16 @@ export const ConfigPage: React.FC = () => {
               {llmConfig.providers.map((provider) => (
                 <Grid key={provider.id} size={{ xs: 12, sm: 6, md: 4 }}>
                   <Box
-                    sx={{
+                    sx={(theme) => ({
                       p: 2,
                       borderRadius: 1,
-                      bgcolor: provider.id === selectedProvider ? '#1890ff15' : 'transparent',
+                      bgcolor:
+                        provider.id === selectedProvider
+                          ? alpha(theme.palette.primary.main, 0.08)
+                          : 'transparent',
                       border: '1px solid',
-                      borderColor: provider.id === selectedProvider ? '#1890ff' : 'divider',
-                    }}
+                      borderColor: provider.id === selectedProvider ? 'primary.main' : 'divider',
+                    })}
                   >
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                       <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>

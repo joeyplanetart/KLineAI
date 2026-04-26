@@ -9,14 +9,14 @@ import {
   CircularProgress,
   Grid,
   Typography,
+  Alert,
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import {
   Add as AddIcon,
   PlayArrow as ApplyIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-
-const API_URL = 'http://localhost:8000/api/v1';
 
 interface SavedIndicator {
   id: number;
@@ -89,6 +89,7 @@ df['sell'] = sell.fillna(False)`,
 
 export const IndicatorSquarePage: React.FC = () => {
   const navigate = useNavigate();
+  const theme = useTheme();
   const [savedIndicators, setSavedIndicators] = useState<SavedIndicator[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -151,15 +152,17 @@ export const IndicatorSquarePage: React.FC = () => {
         </Typography>
         <Box
           sx={{
-            bgcolor: '#111827',
-            color: '#e5e7eb',
+            bgcolor: theme.palette.mode === 'dark' ? 'grey.900' : 'grey.100',
+            color: theme.palette.mode === 'dark' ? 'grey.100' : 'grey.900',
             p: 1,
             borderRadius: 1,
             fontSize: 11,
-            fontFamily: 'ui-monospace, monospace',
+            fontFamily: 'ui-monospace, Menlo, Monaco, Consolas, monospace',
             maxHeight: 80,
             overflow: 'hidden',
             whiteSpace: 'pre-wrap',
+            border: 1,
+            borderColor: 'divider',
           }}
         >
           {code.substring(0, 150)}...
@@ -207,9 +210,6 @@ export const IndicatorSquarePage: React.FC = () => {
 
   return (
     <Box>
-      <Typography variant="h5" sx={{ fontWeight: 700, mb: 2 }}>
-        指标广场
-      </Typography>
 
       {savedIndicators.length > 0 && (
         <>

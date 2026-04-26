@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import type { ReactNode } from 'react';
 
 const API_URL = 'http://localhost:8000/api/v1';
 
@@ -38,6 +39,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const storedAccessToken = localStorage.getItem('access_token');
     const storedRefreshToken = localStorage.getItem('refresh_token');
 
+    if (storedRefreshToken) {
+      setRefreshToken(storedRefreshToken);
+    }
     if (storedAccessToken) {
       setAccessToken(storedAccessToken);
       fetchUser(storedAccessToken);

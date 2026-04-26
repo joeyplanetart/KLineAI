@@ -14,18 +14,15 @@ import {
   List,
   ListItem,
   ListItemButton,
-  ListItemText,
 } from '@mui/material';
 import {
   Psychology as PsychologyIcon,
   Star as StarIcon,
-  StarBorder as StarBorderIcon,
-  TrendingUp as TrendingUpIcon,
-  TrendingDown as TrendingDownIcon,
   Delete as DeleteIcon,
   Add as AddIcon,
 } from '@mui/icons-material';
 import ReactECharts from 'echarts-for-react';
+import { alpha, useTheme } from '@mui/material/styles';
 
 const API_URL = 'http://localhost:8000/api/v1';
 
@@ -94,7 +91,15 @@ const directionLabels: Record<string, string> = {
   volatile: '震荡',
 };
 
+const panelSurface = {
+  bgcolor: 'background.paper',
+  border: 1,
+  borderColor: 'divider',
+  borderRadius: 2,
+} as const;
+
 export const AnalysisPanel: React.FC = () => {
+  const theme = useTheme();
   const [selectedStock, setSelectedStock] = useState<StockOption | null>(null);
   const [stockOptions, setStockOptions] = useState<StockOption[]>([]);
   const [searchInput, setSearchInput] = useState('');
@@ -106,7 +111,7 @@ export const AnalysisPanel: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [stockData, setStockData] = useState<any[]>([]);
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
-  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Load watchlist from localStorage on mount
   useEffect(() => {
@@ -440,8 +445,7 @@ export const AnalysisPanel: React.FC = () => {
         {/* Search Header */}
         <Box
           sx={{
-            bgcolor: '#0a1628',
-            borderRadius: 2,
+            ...panelSurface,
             p: 2,
             mb: 2,
           }}
@@ -455,7 +459,7 @@ export const AnalysisPanel: React.FC = () => {
               onChange={handleStockSelect}
               inputValue={searchInput}
               value={selectedStock}
-              sx={{ width: 280, bgcolor: '#0d1b2a', borderRadius: 1 }}
+              sx={{ width: 280 }}
               renderInput={(params) => (
                 <TextField
                   {...params}
@@ -467,21 +471,22 @@ export const AnalysisPanel: React.FC = () => {
             />
             <Button
               variant="contained"
+              color="primary"
               onClick={handleStartAnalysis}
               disabled={loading || fetching || !selectedStock}
               startIcon={loading || fetching ? <CircularProgress size={18} color="inherit" /> : <PsychologyIcon />}
-              sx={{
-                bgcolor: '#1890ff',
-                '&:hover': { bgcolor: '#0077e6' },
-                minWidth: 120,
-              }}
+              sx={{ minWidth: 120 }}
             >
               {loading ? '分析中...' : fetching ? '采集中...' : '开始分析'}
             </Button>
             {analysisResult && (
               <Chip
                 label={`综合评分: ${analysisResult.composite_score}`}
-                sx={{ bgcolor: '#1890ff15', color: '#1890ff' }}
+                size="small"
+                sx={(t) => ({
+                  bgcolor: alpha(t.palette.primary.main, 0.12),
+                  color: 'primary.main',
+                })}
               />
             )}
           </Box>
@@ -492,7 +497,7 @@ export const AnalysisPanel: React.FC = () => {
           <Box sx={{ mb: 2 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
               <CircularProgress size={20} />
-              <Typography variant="body2" color="textSecondary">
+              <Typography variant="body2" color="text.secondary">
                 {status === 'pending' ? '等待分析...' : '分析中...'}
               </Typography>
             </Box>
@@ -513,29 +518,28 @@ export const AnalysisPanel: React.FC = () => {
             {/* Core recommendation card */}
             <Box
               sx={{
-                bgcolor: '#0a1628',
-                borderRadius: 2,
+                ...panelSurface,
                 p: 3,
                 mb: 2,
                 position: 'relative',
                 overflow: 'hidden',
               }}
             >
-              <Box sx={{ position: 'absolute', top: 0, right: 0, width: 200, height: 200, opacity: 0.05 }}>
+              <Box sx={{ position: 'absolute', top: 0, right: 0, width: 200, height: 200, opacity: 0.08 }}>
                 <Box
                   component="svg"
                   viewBox="0 0 200 200"
-                  sx={{ width: '100%', height: '100%' }}
+                  sx={{ width: '100%', height: '100%', color: 'primary.main' }}
                 >
-                  <circle cx="100" cy="100" r="80" fill="none" stroke="#1890ff" strokeWidth="2" />
-                  <circle cx="100" cy="100" r="60" fill="none" stroke="#1890ff" strokeWidth="1" />
-                  <circle cx="100" cy="100" r="40" fill="none" stroke="#1890ff" strokeWidth="1" />
+                  <circle cx="100" cy="100" r="80" fill="none" stroke="currentColor" strokeWidth="2" />
+                  <circle cx="100" cy="100" r="60" fill="none" stroke="currentColor" strokeWidth="1" />
+                  <circle cx="100" cy="100" r="40" fill="none" stroke="currentColor" strokeWidth="1" />
                 </Box>
               </Box>
 
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 4, position: 'relative' }}>
                 <Box sx={{ textAlign: 'center' }}>
-                  <Typography variant="caption" sx={{ color: '#8899a6', textTransform: 'uppercase', letterSpacing: 1 }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 1 }}>
                     核心建议
                   </Typography>
                   <Typography
@@ -545,22 +549,22 @@ export const AnalysisPanel: React.FC = () => {
                     {analysisResult.recommendation}
                   </Typography>
                 </Box>
-                <Divider orientation="vertical" sx={{ height: 60, borderColor: '#233342' }} />
+                <Divider orientation="vertical" sx={{ height: 60, alignSelf: 'center', borderColor: 'divider' }} />
                 <Box sx={{ textAlign: 'center' }}>
-                  <Typography variant="caption" sx={{ color: '#8899a6', textTransform: 'uppercase', letterSpacing: 1 }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 1 }}>
                     置信度
                   </Typography>
-                  <Typography variant="h3" sx={{ fontWeight: 700, color: '#fff' }}>
+                  <Typography variant="h3" sx={{ fontWeight: 700, color: 'text.primary' }}>
                     {analysisResult.confidence}
-                    <Typography component="span" variant="body2" sx={{ color: '#8899a6' }}>%</Typography>
+                    <Typography component="span" variant="body2" color="text.secondary">%</Typography>
                   </Typography>
                 </Box>
-                <Divider orientation="vertical" sx={{ height: 60, borderColor: '#233342' }} />
+                <Divider orientation="vertical" sx={{ height: 60, alignSelf: 'center', borderColor: 'divider' }} />
                 <Box sx={{ textAlign: 'center' }}>
-                  <Typography variant="caption" sx={{ color: '#8899a6', textTransform: 'uppercase', letterSpacing: 1 }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 1 }}>
                     综合评分
                   </Typography>
-                  <Typography variant="h3" sx={{ fontWeight: 700, color: '#1890ff' }}>
+                  <Typography variant="h3" sx={{ fontWeight: 700, color: 'primary.main' }}>
                     {analysisResult.composite_score}
                   </Typography>
                 </Box>
@@ -570,13 +574,12 @@ export const AnalysisPanel: React.FC = () => {
             {/* Four-dimensional scores */}
             <Box
               sx={{
-                bgcolor: '#0a1628',
-                borderRadius: 2,
+                ...panelSurface,
                 p: 2,
                 mb: 2,
               }}
             >
-              <Typography variant="subtitle2" sx={{ color: '#8899a6', mb: 2, textTransform: 'uppercase', letterSpacing: 1 }}>
+              <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 2, textTransform: 'uppercase', letterSpacing: 1 }}>
                 四维评分
               </Typography>
               <Box sx={{ display: 'flex', gap: 3 }}>
@@ -584,10 +587,10 @@ export const AnalysisPanel: React.FC = () => {
                   { label: '技术面', score: analysisResult.technical_score, color: '#ef0428' },
                   { label: '基本面', score: analysisResult.fundamental_score, color: '#00c853' },
                   { label: '情绪面', score: analysisResult.sentiment_score, color: '#faad14' },
-                  { label: '综合', score: analysisResult.composite_score, color: '#1890ff' },
+                  { label: '综合', score: analysisResult.composite_score, color: theme.palette.primary.main },
                 ].map(({ label, score, color }) => (
                   <Box key={label} sx={{ textAlign: 'center', flex: 1 }}>
-                    <Typography variant="caption" sx={{ color: '#8899a6' }}>{label}</Typography>
+                    <Typography variant="caption" color="text.secondary">{label}</Typography>
                     <Box
                       sx={{
                         width: 50,
@@ -613,13 +616,12 @@ export const AnalysisPanel: React.FC = () => {
             {/* Cycle predictions */}
             <Box
               sx={{
-                bgcolor: '#0a1628',
-                borderRadius: 2,
+                ...panelSurface,
                 p: 2,
                 mb: 2,
               }}
             >
-              <Typography variant="subtitle2" sx={{ color: '#8899a6', mb: 2, textTransform: 'uppercase', letterSpacing: 1 }}>
+              <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 2, textTransform: 'uppercase', letterSpacing: 1 }}>
                 周期趋势预判
               </Typography>
               <Box sx={{ display: 'flex', gap: 2 }}>
@@ -630,21 +632,22 @@ export const AnalysisPanel: React.FC = () => {
                       flex: 1,
                       textAlign: 'center',
                       p: 1.5,
-                      bgcolor: '#132033',
+                      bgcolor: 'action.hover',
                       borderRadius: 1,
-                      border: `1px solid ${directionColors[prediction.direction] || '#233342'}33`,
+                      border: '1px solid',
+                      borderColor: alpha(directionColors[prediction.direction] || theme.palette.divider, 0.35),
                     }}
                   >
-                    <Typography variant="caption" sx={{ color: '#8899a6', display: 'block', mb: 0.5 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
                       {periodLabels[period] || period}
                     </Typography>
                     <Typography
                       variant="body2"
-                      sx={{ fontWeight: 600, color: directionColors[prediction.direction] || '#8899a6' }}
+                      sx={{ fontWeight: 600, color: directionColors[prediction.direction] || 'text.secondary' }}
                     >
                       {directionLabels[prediction.direction] || prediction.direction}
                     </Typography>
-                    <Typography variant="caption" sx={{ color: '#566778' }}>
+                    <Typography variant="caption" color="text.secondary">
                       强度 {prediction.strength}
                     </Typography>
                   </Box>
@@ -656,13 +659,12 @@ export const AnalysisPanel: React.FC = () => {
             {stockData.length > 0 && (
               <Box
                 sx={{
-                  bgcolor: '#0a1628',
-                  borderRadius: 2,
+                  ...panelSurface,
                   p: 2,
                   mb: 2,
                 }}
               >
-                <Typography variant="subtitle2" sx={{ color: '#8899a6', mb: 2, textTransform: 'uppercase', letterSpacing: 1 }}>
+                <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 2, textTransform: 'uppercase', letterSpacing: 1 }}>
                   K线走势
                 </Typography>
                 <ReactECharts option={chartOption} style={{ height: 280 }} />
@@ -674,28 +676,28 @@ export const AnalysisPanel: React.FC = () => {
               <Box
                 sx={{
                   flex: 1,
-                  bgcolor: '#0a1628',
-                  borderRadius: 2,
+                  ...panelSurface,
                   p: 2,
-                  borderLeft: '3px solid #00c853',
+                  borderLeft: '3px solid',
+                  borderLeftColor: 'success.main',
                 }}
               >
-                <Typography variant="caption" sx={{ color: '#8899a6' }}>支撑位</Typography>
-                <Typography variant="h5" sx={{ fontWeight: 600, color: '#00c853' }}>
+                <Typography variant="caption" color="text.secondary">支撑位</Typography>
+                <Typography variant="h5" sx={{ fontWeight: 600, color: 'success.main' }}>
                   {analysisResult.support_level?.toFixed(2) || '-'}
                 </Typography>
               </Box>
               <Box
                 sx={{
                   flex: 1,
-                  bgcolor: '#0a1628',
-                  borderRadius: 2,
+                  ...panelSurface,
                   p: 2,
-                  borderLeft: '3px solid #ef0428',
+                  borderLeft: '3px solid',
+                  borderLeftColor: 'error.main',
                 }}
               >
-                <Typography variant="caption" sx={{ color: '#8899a6' }}>阻力位</Typography>
-                <Typography variant="h5" sx={{ fontWeight: 600, color: '#ef0428' }}>
+                <Typography variant="caption" color="text.secondary">阻力位</Typography>
+                <Typography variant="h5" sx={{ fontWeight: 600, color: 'error.main' }}>
                   {analysisResult.resistance_level?.toFixed(2) || '-'}
                 </Typography>
               </Box>
@@ -705,14 +707,13 @@ export const AnalysisPanel: React.FC = () => {
             {analysisResult.risk_warnings && analysisResult.risk_warnings.length > 0 && (
               <Box
                 sx={{
-                  bgcolor: '#0a1628',
-                  borderRadius: 2,
+                  ...panelSurface,
                   p: 2,
                   mb: 2,
-                  border: '1px solid #faad1433',
+                  borderColor: alpha(theme.palette.warning.main, 0.45),
                 }}
               >
-                <Typography variant="subtitle2" sx={{ color: '#faad14', mb: 1.5, textTransform: 'uppercase', letterSpacing: 1 }}>
+                <Typography variant="subtitle2" color="warning.main" sx={{ mb: 1.5, textTransform: 'uppercase', letterSpacing: 1 }}>
                   风险提示
                 </Typography>
                 {analysisResult.risk_warnings.map((warning, index) => (
@@ -731,12 +732,12 @@ export const AnalysisPanel: React.FC = () => {
                         width: 6,
                         height: 6,
                         borderRadius: '50%',
-                        bgcolor: '#faad14',
+                        bgcolor: 'warning.main',
                         mt: 0.8,
                         flexShrink: 0,
                       }}
                     />
-                    <Typography variant="body2" sx={{ color: '#8899a6' }}>
+                    <Typography variant="body2" color="text.secondary">
                       {warning}
                     </Typography>
                   </Box>
@@ -748,17 +749,17 @@ export const AnalysisPanel: React.FC = () => {
             {analysisResult.report && (
               <Box
                 sx={{
-                  bgcolor: '#0a1628',
-                  borderRadius: 2,
+                  ...panelSurface,
                   p: 2,
                 }}
               >
-                <Typography variant="subtitle2" sx={{ color: '#8899a6', mb: 2, textTransform: 'uppercase', letterSpacing: 1 }}>
+                <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 2, textTransform: 'uppercase', letterSpacing: 1 }}>
                   AI 分析报告
                 </Typography>
                 <Typography
                   variant="body2"
-                  sx={{ color: '#c5d1db', whiteSpace: 'pre-wrap', lineHeight: 1.8 }}
+                  color="text.primary"
+                  sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.8 }}
                 >
                   {analysisResult.report}
                 </Typography>
@@ -776,8 +777,7 @@ export const AnalysisPanel: React.FC = () => {
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              bgcolor: '#0a1628',
-              borderRadius: 2,
+              ...panelSurface,
               py: 8,
             }}
           >
@@ -786,30 +786,27 @@ export const AnalysisPanel: React.FC = () => {
                 width: 80,
                 height: 80,
                 borderRadius: '50%',
-                bgcolor: '#1890ff15',
+                bgcolor: (t) => alpha(t.palette.primary.main, 0.12),
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 mb: 3,
               }}
             >
-              <PsychologyIcon sx={{ fontSize: 40, color: '#1890ff' }} />
+              <PsychologyIcon sx={{ fontSize: 40, color: 'primary.main' }} />
             </Box>
-            <Typography variant="h6" sx={{ color: '#fff', mb: 1 }}>
+            <Typography variant="h6" color="text.primary" sx={{ mb: 1 }}>
               AI 智能分析引擎
             </Typography>
-            <Typography variant="body2" sx={{ color: '#8899a6', mb: 3, textAlign: 'center' }}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3, textAlign: 'center' }}>
               多维数据驱动 · 量化级别洞察 · 实时市场脉搏
             </Typography>
             <Button
               variant="contained"
+              color="primary"
               onClick={handleStartAnalysis}
               disabled={!selectedStock}
               startIcon={<PsychologyIcon />}
-              sx={{
-                bgcolor: '#1890ff',
-                '&:hover': { bgcolor: '#0077e6' },
-              }}
             >
               开始分析
             </Button>
@@ -821,8 +818,7 @@ export const AnalysisPanel: React.FC = () => {
       <Box
         sx={{
           width: 280,
-          bgcolor: '#0d1b2a',
-          borderRadius: 2,
+          ...panelSurface,
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
@@ -832,29 +828,31 @@ export const AnalysisPanel: React.FC = () => {
         <Box
           sx={{
             p: 2,
-            borderBottom: '1px solid #1b2838',
+            borderBottom: 1,
+            borderColor: 'divider',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
           }}
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <StarIcon sx={{ color: '#ffd700', fontSize: 20 }} />
-            <Typography variant="subtitle1" sx={{ color: '#fff', fontWeight: 600 }}>
+            <StarIcon sx={{ color: 'warning.main', fontSize: 20 }} />
+            <Typography variant="subtitle1" color="text.primary" sx={{ fontWeight: 600 }}>
               我的自选股
             </Typography>
             <Chip
               label={watchlist.length}
               size="small"
+              variant="outlined"
               sx={{
                 height: 20,
                 fontSize: 12,
-                bgcolor: '#1b2838',
-                color: '#8899a6',
+                borderColor: 'divider',
+                color: 'text.secondary',
               }}
             />
           </Box>
-          <IconButton size="small" sx={{ color: '#8899a6' }}>
+          <IconButton size="small" sx={{ color: 'text.secondary' }}>
             <AddIcon fontSize="small" />
           </IconButton>
         </Box>
@@ -863,10 +861,10 @@ export const AnalysisPanel: React.FC = () => {
         <Box sx={{ flex: 1, overflow: 'auto' }}>
           {watchlist.length === 0 ? (
             <Box sx={{ p: 3, textAlign: 'center' }}>
-              <Typography variant="body2" sx={{ color: '#8899a6' }}>
+              <Typography variant="body2" color="text.secondary">
                 自选股为空
               </Typography>
-              <Typography variant="caption" sx={{ color: '#566778' }}>
+              <Typography variant="caption" color="text.secondary">
                 分析股票后将自动添加到这里
               </Typography>
             </Box>
@@ -883,7 +881,7 @@ export const AnalysisPanel: React.FC = () => {
                         e.stopPropagation();
                         removeFromWatchlist(item.symbol);
                       }}
-                      sx={{ color: '#566778', '&:hover': { color: '#ef0428' } }}
+                      sx={{ color: 'text.secondary', '&:hover': { color: 'error.main' } }}
                     >
                       <DeleteIcon fontSize="small" />
                     </IconButton>
@@ -894,15 +892,17 @@ export const AnalysisPanel: React.FC = () => {
                     sx={{
                       py: 1.5,
                       px: 2,
-                      borderBottom: '1px solid #1b2838',
-                      '&:hover': { bgcolor: '#1b2838' },
+                      borderBottom: 1,
+                      borderColor: 'divider',
+                      '&:hover': { bgcolor: 'action.hover' },
                     }}
                   >
                     <Box sx={{ flex: 1, minWidth: 0 }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
                         <Typography
                           variant="body2"
-                          sx={{ color: '#fff', fontWeight: 600 }}
+                          color="text.primary"
+                          sx={{ fontWeight: 600 }}
                           noWrap
                         >
                           {item.name}
@@ -924,14 +924,14 @@ export const AnalysisPanel: React.FC = () => {
                         />
                       </Box>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Typography variant="caption" sx={{ color: '#8899a6' }}>
+                        <Typography variant="caption" color="text.secondary">
                           {item.symbol.replace(/^(sh|sz)/, '').toUpperCase()}
                         </Typography>
                         {item.composite_score !== undefined && (
                           <Typography
                             variant="caption"
+                            color="primary"
                             sx={{
-                              color: '#1890ff',
                               fontWeight: 600,
                             }}
                           >

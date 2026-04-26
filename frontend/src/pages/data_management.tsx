@@ -45,7 +45,6 @@ import {
   Warning as WarningIcon,
   CheckCircle as CheckCircleIcon,
   PlayCircle as PlayCircleIcon,
-  Settings as SettingsIcon,
   Schedule as ScheduleIcon,
   Edit as EditIcon,
   Save as SaveIcon,
@@ -82,6 +81,7 @@ interface StockInfo {
   symbol: string;
   code: string;
   name: string;
+  search_key?: string;
   exchange: string;
   status: string;
   listing_date: string | null;
@@ -175,7 +175,7 @@ export const DataManagementPage: React.FC = () => {
   const [batchLoading, setBatchLoading] = useState(false);
 
   // Batch job tracking states
-  const [batchJobId, setBatchJobId] = useState<string | null>(null);
+  const [_batchJobId, setBatchJobId] = useState<string | null>(null);
   const [batchJobStatus, setBatchJobStatus] = useState<any>(null);
   const [clearingCache, setClearingCache] = useState(false);
 
@@ -631,11 +631,8 @@ export const DataManagementPage: React.FC = () => {
 
   return (
     <Box>
-      <Typography variant="h5" gutterBottom>
-        数据管理
-      </Typography>
 
-      <Tabs value={tabValue} onChange={handleTabChange} sx={{ borderBottom: 1, borderColor: 'divider' }}>
+      <Tabs value={tabValue} onChange={handleTabChange} sx={{ borderBottom: 1, borderColor: 'divider', mb: 0 }}>
         <Tab label="股票列表" />
         <Tab label="数据质量" />
         <Tab label="批量采集" />
@@ -693,7 +690,9 @@ export const DataManagementPage: React.FC = () => {
                 freeSolo
                 size="small"
                 options={stockSuggestions}
-                getOptionLabel={(option) => typeof option === 'string' ? option : option.search_key}
+                getOptionLabel={(option) =>
+                  typeof option === 'string' ? option : (option.search_key ?? `${option.code} ${option.name}`)
+                }
                 inputValue={stockSearch}
                 onInputChange={(_event, newValue) => {
                   setStockSearch(newValue);
@@ -712,19 +711,29 @@ export const DataManagementPage: React.FC = () => {
                 }}
                 renderInput={(params) => (
                   <TextField
-                    {...params}
                     placeholder="搜索代码或名称"
-                    InputProps={{
-                      ...params.InputProps,
-                      endAdornment: (
-                        <InputAdornment position="end">
-                          <IconButton onClick={() => fetchStockList(1, stockSearch, stockExchange)} edge="end">
-                            <SearchIcon />
-                          </IconButton>
-                        </InputAdornment>
-                      ),
-                    }}
+                    id={params.id}
+                    disabled={params.disabled}
+                    fullWidth={params.fullWidth}
+                    size={params.size}
                     sx={{ width: 280 }}
+                    slotProps={{
+                      inputLabel: params.slotProps.inputLabel,
+                      htmlInput: params.slotProps.htmlInput,
+                      input: {
+                        ...params.slotProps.input,
+                        endAdornment: (
+                          <>
+                            {params.slotProps.input.endAdornment}
+                            <InputAdornment position="end">
+                              <IconButton onClick={() => fetchStockList(1, stockSearch, stockExchange)} edge="end">
+                                <SearchIcon />
+                              </IconButton>
+                            </InputAdornment>
+                          </>
+                        ),
+                      },
+                    }}
                   />
                 )}
               />
@@ -804,7 +813,7 @@ export const DataManagementPage: React.FC = () => {
             </TableContainer>
             {/* Pagination */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
-              <Typography variant="body2" color="textSecondary">
+              <Typography variant="body2" color="text.secondary">
                 共 {stockPagination.total} 条记录，第 {stockPagination.page}/{stockPagination.total_pages} 页
               </Typography>
               <Pagination
@@ -825,12 +834,12 @@ export const DataManagementPage: React.FC = () => {
           <CardContent>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
               <Typography variant="h6">数据质量概览 (近30天)</Typography>
-              <Button startIcon={<RefreshIcon />} onClick={fetchDataQuality}>
+              <Button startIcon={<RefreshIcon />} onClick={() => void fetchDataQuality()}>
                 刷新
               </Button>
             </Box>
             {qualitySummary && (
-              <Stack direction="row" spacing={2} flexWrap="wrap">
+              <Box sx={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: 2 }}>
                 {Object.entries(qualitySummary.anomalies_by_type || {}).map(([type, count]) => (
                   <Chip
                     key={type}
@@ -847,7 +856,7 @@ export const DataManagementPage: React.FC = () => {
                   color={qualitySummary.total_unresolved > 0 ? 'warning' : 'success'}
                   sx={{ m: 0.5 }}
                 />
-              </Stack>
+              </Box>
             )}
           </CardContent>
         </Card>
@@ -895,7 +904,7 @@ export const DataManagementPage: React.FC = () => {
             </TableContainer>
             {/* Pagination */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
-              <Typography variant="body2" color="textSecondary">
+              <Typography variant="body2" color="text.secondary">
                 共 {anomalyPagination.total} 条记录，第 {anomalyPagination.page}/{anomalyPagination.total_pages} 页
               </Typography>
               <Pagination
@@ -917,12 +926,19 @@ export const DataManagementPage: React.FC = () => {
             <Typography variant="h6" gutterBottom>批量采集股票数据</Typography>
 
             {/* 采集全部A股区域 */}
-            <Card variant="outlined" sx={{ mb: 3, bgcolor: 'grey.100' }}>
+            <Card
+              variant="outlined"
+              sx={{
+                mb: 3,
+                bgcolor: 'action.hover',
+                borderColor: 'divider',
+              }}
+            >
               <CardContent>
-                <Typography variant="subtitle1" gutterBottom sx={{ color: '#333' }}>
+                <Typography variant="subtitle1" gutterBottom color="text.primary">
                   一键采集全部A股
                 </Typography>
-                <Typography variant="body2" sx={{ mb: 2, color: '#555' }}>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                   自动从数据库获取全部5500+只A股，分批采集并显示进度
                 </Typography>
 
@@ -988,7 +1004,7 @@ export const DataManagementPage: React.FC = () => {
                 onChange={(e) => setBatchSymbols(e.target.value)}
                 helperText="多个代码用逗号分隔，如：sh600000, sz000001"
                 size="small"
-                sx={{ bgcolor: 'background.paper' }}
+                fullWidth
               />
               <Stack direction="row" spacing={2}>
                 <TextField
@@ -997,8 +1013,7 @@ export const DataManagementPage: React.FC = () => {
                   value={batchStartDate}
                   onChange={(e) => setBatchStartDate(e.target.value)}
                   size="small"
-                  InputLabelProps={{ shrink: true }}
-                  sx={{ bgcolor: 'background.paper' }}
+                  slotProps={{ inputLabel: { shrink: true } }}
                 />
                 <TextField
                   label="结束日期"
@@ -1006,13 +1021,13 @@ export const DataManagementPage: React.FC = () => {
                   value={batchEndDate}
                   onChange={(e) => setBatchEndDate(e.target.value)}
                   size="small"
-                  InputLabelProps={{ shrink: true }}
-                  sx={{ bgcolor: 'background.paper' }}
+                  slotProps={{ inputLabel: { shrink: true } }}
                 />
               </Stack>
               <Stack direction="row" spacing={2}>
                 <Button
                   variant="contained"
+                  color="primary"
                   startIcon={batchLoading && !batchJobStatus ? <CircularProgress size={20} /> : <PlayCircleIcon />}
                   onClick={handleBatchFetch}
                   disabled={batchLoading}
@@ -1065,8 +1080,8 @@ export const DataManagementPage: React.FC = () => {
                 {batchResult.message}
               </Alert>
             )}
-            <Typography variant="body2" sx={{ mt: 2, color: '#666' }}>
-              <StorageIcon sx={{ fontSize: 16, verticalAlign: 'middle', mr: 0.5 }} />
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <StorageIcon sx={{ fontSize: 18 }} />
               批量采集会为每个股票创建分布式锁，防止重复采集。
             </Typography>
           </CardContent>
@@ -1164,8 +1179,8 @@ export const DataManagementPage: React.FC = () => {
                     {tasks.map((task) => (
                       <TableRow key={task.task_name}>
                         <TableCell>
-                          <Typography variant="body2" fontWeight="bold">{task.display_name}</Typography>
-                          <Typography variant="caption" color="textSecondary">{task.task_name}</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 700 }}>{task.display_name}</Typography>
+                          <Typography variant="caption" color="text.secondary">{task.task_name}</Typography>
                         </TableCell>
                         <TableCell>
                           <Chip icon={<ScheduleIcon />} label={task.schedule} size="small" variant="outlined" />
@@ -1282,7 +1297,7 @@ export const DataManagementPage: React.FC = () => {
               <Typography variant="body2">
                 <strong>配置项:</strong> {editingConfig.key}
               </Typography>
-              <Typography variant="body2" color="textSecondary">
+              <Typography variant="body2" color="text.secondary">
                 {editingConfig.description}
               </Typography>
               <TextField

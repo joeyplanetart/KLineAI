@@ -11,7 +11,6 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Paper,
   Chip,
   CircularProgress,
   Alert,
@@ -97,18 +96,15 @@ export const UsagePage: React.FC = () => {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h5">Model Usage Statistics</Typography>
-        <FormControl sx={{ minWidth: 120 }} size="small">
-          <InputLabel>Time Range</InputLabel>
-          <Select value={days} label="Time Range" onChange={(e) => setDays(e.target.value as number)}>
-            <MenuItem value={7}>Last 7 days</MenuItem>
-            <MenuItem value={14}>Last 14 days</MenuItem>
-            <MenuItem value={30}>Last 30 days</MenuItem>
-            <MenuItem value={90}>Last 90 days</MenuItem>
-          </Select>
-        </FormControl>
-      </Box>
+      <FormControl sx={{ minWidth: 140, mb: 3 }} size="small">
+        <InputLabel>时间范围</InputLabel>
+        <Select value={days} label="时间范围" onChange={(e) => setDays(e.target.value as number)}>
+          <MenuItem value={7}>最近 7 天</MenuItem>
+          <MenuItem value={14}>最近 14 天</MenuItem>
+          <MenuItem value={30}>最近 30 天</MenuItem>
+          <MenuItem value={90}>最近 90 天</MenuItem>
+        </Select>
+      </FormControl>
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 

@@ -9,7 +9,7 @@ import {
   Typography,
   Link,
   Alert,
-  CircularProgress
+  CircularProgress,
 } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
 
@@ -28,12 +28,12 @@ export const RegisterPage: React.FC = () => {
     setError(null);
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
+      setError('两次输入的密码不一致');
       return;
     }
 
     if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+      setError('密码至少 6 位');
       return;
     }
 
@@ -56,14 +56,48 @@ export const RegisterPage: React.FC = () => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        bgcolor: 'background.default'
+        bgcolor: 'background.default',
+        p: 2,
       }}
     >
-      <Card sx={{ maxWidth: 400, width: '100%', mx: 2 }}>
-        <CardContent sx={{ p: 4 }}>
-          <Typography variant="h5" component="h1" gutterBottom textAlign="center">
-            Create Account
-          </Typography>
+      <Card
+        variant="outlined"
+        sx={{
+          maxWidth: 420,
+          width: '100%',
+          boxShadow: (theme) =>
+            theme.palette.mode === 'light' ? '0 2px 12px rgba(0,0,0,0.06)' : 'none',
+        }}
+      >
+        <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, mb: 2 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 1.5 }}>
+              <Box
+                sx={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 1.5,
+                  bgcolor: 'primary.main',
+                  color: 'primary.contrastText',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: 700,
+                  fontSize: 18,
+                }}
+              >
+                K
+              </Box>
+              <Box>
+                <Typography variant="h5" component="h1" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
+                  创建账号
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  加入 KLineAI 量化平台
+                </Typography>
+              </Box>
+            </Box>
+          </Box>
 
           {error && (
             <Alert severity="error" sx={{ mb: 2 }}>
@@ -74,7 +108,7 @@ export const RegisterPage: React.FC = () => {
           <form onSubmit={handleSubmit}>
             <TextField
               fullWidth
-              label="Username"
+              label="用户名"
               margin="normal"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
@@ -83,7 +117,7 @@ export const RegisterPage: React.FC = () => {
             />
             <TextField
               fullWidth
-              label="Email"
+              label="邮箱"
               type="email"
               margin="normal"
               value={email}
@@ -92,7 +126,7 @@ export const RegisterPage: React.FC = () => {
             />
             <TextField
               fullWidth
-              label="Password"
+              label="密码"
               type="password"
               margin="normal"
               value={password}
@@ -101,7 +135,7 @@ export const RegisterPage: React.FC = () => {
             />
             <TextField
               fullWidth
-              label="Confirm Password"
+              label="确认密码"
               type="password"
               margin="normal"
               value={confirmPassword}
@@ -116,15 +150,15 @@ export const RegisterPage: React.FC = () => {
               disabled={loading}
               sx={{ mt: 3 }}
             >
-              {loading ? <CircularProgress size={24} /> : 'Register'}
+              {loading ? <CircularProgress size={24} color="inherit" /> : '注册'}
             </Button>
           </form>
 
           <Box sx={{ mt: 2, textAlign: 'center' }}>
-            <Typography variant="body2">
-              Already have an account?{' '}
-              <Link component={RouterLink} to="/login">
-                Login
+            <Typography variant="body2" color="text.secondary">
+              已有账号？{' '}
+              <Link component={RouterLink} to="/login" sx={{ fontWeight: 600 }}>
+                登录
               </Link>
             </Typography>
           </Box>

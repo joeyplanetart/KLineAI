@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useTheme } from '@mui/material/styles';
 import {
   Alert,
   Autocomplete,
@@ -189,6 +190,8 @@ const normalizeSignalIndices = (buy: number[], sell: number[]): { buy: number[];
 const normalizeSymbol = (code: string): string => (code.startsWith('6') ? `sh${code}` : `sz${code}`);
 
 export const StrategyPage: React.FC = () => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
   const [editorCode, setEditorCode] = useState(DEFAULT_CODE);
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
@@ -758,12 +761,12 @@ export const StrategyPage: React.FC = () => {
                   '& .MuiInputBase-root': {
                     fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
                     fontSize: 13,
-                    bgcolor: '#111827',
-                    color: '#e5e7eb',
+                    bgcolor: isDark ? '#111827' : '#f5f5f5',
+                    color: isDark ? '#e5e7eb' : '#333333',
                     borderRadius: 1,
                   },
                   '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: '#334155 !important',
+                    borderColor: isDark ? '#334155' : '#e0e0e0',
                   },
                 }}
               />

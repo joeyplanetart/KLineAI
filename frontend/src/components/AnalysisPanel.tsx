@@ -433,10 +433,15 @@ export const AnalysisPanel: React.FC = () => {
   };
 
   const recommendationColor = {
-    'BUY': '#ef0428',
-    'SELL': '#00c853',
-    'HOLD': '#faad14',
+    BUY: '#ef0428',
+    SELL: '#00c853',
+    HOLD: '#faad14',
   }[analysisResult?.recommendation || 'HOLD'] || '#faad14';
+
+  const recommendationLabelZh = (rec: string) => {
+    const u = (rec || '').toUpperCase();
+    return ({ BUY: '买入', SELL: '卖出', HOLD: '持有' }[u] ?? rec);
+  };
 
   return (
     <Box sx={{ display: 'flex', height: 'calc(100vh - 200px)', gap: 2 }}>
@@ -546,7 +551,7 @@ export const AnalysisPanel: React.FC = () => {
                     variant="h3"
                     sx={{ fontWeight: 700, color: recommendationColor, letterSpacing: 2 }}
                   >
-                    {analysisResult.recommendation}
+                    {recommendationLabelZh(analysisResult.recommendation)}
                   </Typography>
                 </Box>
                 <Divider orientation="vertical" sx={{ height: 60, alignSelf: 'center', borderColor: 'divider' }} />
@@ -908,7 +913,7 @@ export const AnalysisPanel: React.FC = () => {
                           {item.name}
                         </Typography>
                         <Chip
-                          label={item.recommendation || '-'}
+                          label={item.recommendation ? recommendationLabelZh(item.recommendation) : '-'}
                           size="small"
                           sx={{
                             height: 18,

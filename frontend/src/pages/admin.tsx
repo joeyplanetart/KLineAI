@@ -35,6 +35,7 @@ import {
   Person as PersonIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
+import { PageHeader } from '../components/PageHeader';
 
 const API_URL = 'http://localhost:8000/api/v1';
 
@@ -80,12 +81,12 @@ export const AdminPage: React.FC = () => {
       });
       if (!response.ok) {
         const err: ApiError = await response.json();
-        throw new Error(err.detail || 'Failed to fetch users');
+        throw new Error(err.detail || '获取用户列表失败');
       }
       const data = await response.json();
       setUsers(data.users);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch users');
+      setError(err instanceof Error ? err.message : '获取用户列表失败');
     } finally {
       setLoading(false);
     }
@@ -115,14 +116,14 @@ export const AdminPage: React.FC = () => {
       });
       if (!response.ok) {
         const err: ApiError = await response.json();
-        throw new Error(err.detail || 'Failed to create user');
+        throw new Error(err.detail || '创建用户失败');
       }
-      setSnackbar({ open: true, message: 'User created successfully', severity: 'success' });
+      setSnackbar({ open: true, message: '用户已创建', severity: 'success' });
       setCreateDialogOpen(false);
       setCreateForm({ username: '', email: '', password: '', role: 'user' });
       fetchUsers();
     } catch (err) {
-      setCreateError(err instanceof Error ? err.message : 'Failed to create user');
+      setCreateError(err instanceof Error ? err.message : '创建用户失败');
     } finally {
       setCreateLoading(false);
     }
@@ -140,18 +141,18 @@ export const AdminPage: React.FC = () => {
       });
       if (!response.ok) {
         const err: ApiError = await response.json();
-        throw new Error(err.detail || 'Failed to update role');
+        throw new Error(err.detail || '更新角色失败');
       }
-      setSnackbar({ open: true, message: 'Role updated successfully', severity: 'success' });
+      setSnackbar({ open: true, message: '角色已更新', severity: 'success' });
       fetchUsers();
     } catch (err) {
-      setSnackbar({ open: true, message: err instanceof Error ? err.message : 'Failed to update role', severity: 'error' });
+      setSnackbar({ open: true, message: err instanceof Error ? err.message : '更新角色失败', severity: 'error' });
     }
     handleMenuClose();
   };
 
   const handleDeleteUser = async (userId: number) => {
-    if (!window.confirm('Are you sure you want to delete this user?')) return;
+    if (!window.confirm('确定要删除该用户吗？')) return;
     try {
       const response = await fetch(`${API_URL}/users/${userId}`, {
         method: 'DELETE',
@@ -159,12 +160,12 @@ export const AdminPage: React.FC = () => {
       });
       if (!response.ok) {
         const err: ApiError = await response.json();
-        throw new Error(err.detail || 'Failed to delete user');
+        throw new Error(err.detail || '删除用户失败');
       }
-      setSnackbar({ open: true, message: 'User deleted successfully', severity: 'success' });
+      setSnackbar({ open: true, message: '用户已删除', severity: 'success' });
       fetchUsers();
     } catch (err) {
-      setSnackbar({ open: true, message: err instanceof Error ? err.message : 'Failed to delete user', severity: 'error' });
+      setSnackbar({ open: true, message: err instanceof Error ? err.message : '删除用户失败', severity: 'error' });
     }
     handleMenuClose();
   };
@@ -183,11 +184,15 @@ export const AdminPage: React.FC = () => {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 3 }}>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateDialogOpen(true)}>
-          添加用户
-        </Button>
-      </Box>
+      <PageHeader
+        title="用户管理"
+        subtitle="创建、编辑角色与删除用户"
+        action={
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateDialogOpen(true)}>
+            添加用户
+          </Button>
+        }
+      />
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
@@ -196,11 +201,11 @@ export const AdminPage: React.FC = () => {
           <TableHead>
             <TableRow>
               <TableCell>ID</TableCell>
-              <TableCell>Username</TableCell>
-              <TableCell>Email</TableCell>
-              <TableCell>Role</TableCell>
-              <TableCell>Created At</TableCell>
-              <TableCell align="right">Actions</TableCell>
+              <TableCell>用户名</TableCell>
+              <TableCell>邮箱</TableCell>
+              <TableCell>角色</TableCell>
+              <TableCell>创建时间</TableCell>
+              <TableCell align="right">操作</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -212,7 +217,7 @@ export const AdminPage: React.FC = () => {
                 <TableCell>
                   <Chip
                     icon={user.role === 'admin' ? <AdminIcon /> : <PersonIcon />}
-                    label={user.role === 'admin' ? 'Admin' : 'User'}
+                    label={user.role === 'admin' ? '管理员' : '用户'}
                     color={user.role === 'admin' ? 'primary' : 'default'}
                     size="small"
                   />
@@ -238,7 +243,7 @@ export const AdminPage: React.FC = () => {
           <ListItemIcon>
             {selectedUser?.role === 'admin' ? <PersonIcon /> : <AdminIcon />}
           </ListItemIcon>
-          <ListItemText primary={selectedUser?.role === 'admin' ? 'Change to User' : 'Change to Admin'} />
+          <ListItemText primary={selectedUser?.role === 'admin' ? '改为普通用户' : '设为管理员'} />
         </MenuItem>
         <MenuItem onClick={() => {
           if (selectedUser) {
@@ -246,17 +251,17 @@ export const AdminPage: React.FC = () => {
           }
         }} sx={{ color: 'error.main' }}>
           <ListItemIcon><DeleteIcon color="error" /></ListItemIcon>
-          <ListItemText primary="Delete" />
+          <ListItemText primary="删除" />
         </MenuItem>
       </Menu>
 
       <Dialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Create New User</DialogTitle>
+        <DialogTitle>新建用户</DialogTitle>
         <DialogContent>
           {createError && <Alert severity="error" sx={{ mt: 2 }}>{createError}</Alert>}
           <TextField
             fullWidth
-            label="Username"
+            label="用户名"
             value={createForm.username}
             onChange={(e) => setCreateForm({ ...createForm, username: e.target.value })}
             margin="normal"
@@ -264,7 +269,7 @@ export const AdminPage: React.FC = () => {
           />
           <TextField
             fullWidth
-            label="Email"
+            label="邮箱"
             type="email"
             value={createForm.email}
             onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
@@ -273,7 +278,7 @@ export const AdminPage: React.FC = () => {
           />
           <TextField
             fullWidth
-            label="Password"
+            label="密码"
             type="password"
             value={createForm.password}
             onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
@@ -281,21 +286,21 @@ export const AdminPage: React.FC = () => {
             required
           />
           <FormControl fullWidth margin="normal">
-            <InputLabel>Role</InputLabel>
+            <InputLabel>角色</InputLabel>
             <Select
               value={createForm.role}
-              label="Role"
+              label="角色"
               onChange={(e) => setCreateForm({ ...createForm, role: e.target.value })}
             >
-              <MenuItem value="user">User</MenuItem>
-              <MenuItem value="admin">Admin</MenuItem>
+              <MenuItem value="user">普通用户</MenuItem>
+              <MenuItem value="admin">管理员</MenuItem>
             </Select>
           </FormControl>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
+          <Button onClick={() => setCreateDialogOpen(false)}>取消</Button>
           <Button onClick={handleCreateUser} variant="contained" disabled={createLoading}>
-            {createLoading ? <CircularProgress size={24} /> : 'Create'}
+            {createLoading ? <CircularProgress size={24} /> : '创建'}
           </Button>
         </DialogActions>
       </Dialog>

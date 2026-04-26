@@ -26,6 +26,7 @@ import {
   Speed as SpeedIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
+import { PageHeader } from '../components/PageHeader';
 
 const API_URL = 'http://localhost:8000/api/v1';
 
@@ -75,12 +76,12 @@ export const UsagePage: React.FC = () => {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       if (!response.ok) {
-        throw new Error('Failed to fetch usage statistics');
+        throw new Error('获取用量统计失败');
       }
       const data = await response.json();
       setUsageData(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      setError(err instanceof Error ? err.message : '未知错误');
     } finally {
       setLoading(false);
     }
@@ -96,15 +97,15 @@ export const UsagePage: React.FC = () => {
 
   return (
     <Box>
-      <FormControl sx={{ minWidth: 140, mb: 3 }} size="small">
-        <InputLabel>时间范围</InputLabel>
-        <Select value={days} label="时间范围" onChange={(e) => setDays(e.target.value as number)}>
-          <MenuItem value={7}>最近 7 天</MenuItem>
-          <MenuItem value={14}>最近 14 天</MenuItem>
-          <MenuItem value={30}>最近 30 天</MenuItem>
-          <MenuItem value={90}>最近 90 天</MenuItem>
-        </Select>
-      </FormControl>
+          <FormControl sx={{ minWidth: 140 }} size="small">
+            <InputLabel>时间范围</InputLabel>
+            <Select value={days} label="时间范围" onChange={(e) => setDays(e.target.value as number)}>
+              <MenuItem value={7}>最近 7 天</MenuItem>
+              <MenuItem value={14}>最近 14 天</MenuItem>
+              <MenuItem value={30}>最近 30 天</MenuItem>
+              <MenuItem value={90}>最近 90 天</MenuItem>
+            </Select>
+          </FormControl>
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
@@ -117,7 +118,7 @@ export const UsagePage: React.FC = () => {
                   <TimelineIcon color="primary" sx={{ fontSize: 40 }} />
                   <Box>
                     <Typography variant="body2" color="text.secondary">
-                      Total Calls
+                      调用总次数
                     </Typography>
                     <Typography variant="h4">{usageData.summary.total_calls}</Typography>
                   </Box>
@@ -131,7 +132,7 @@ export const UsagePage: React.FC = () => {
                   <TrendingUpIcon color="secondary" sx={{ fontSize: 40 }} />
                   <Box>
                     <Typography variant="body2" color="text.secondary">
-                      Total Tokens
+                      Token 总量
                     </Typography>
                     <Typography variant="h4">{usageData.summary.total_tokens.toLocaleString()}</Typography>
                   </Box>
@@ -145,7 +146,7 @@ export const UsagePage: React.FC = () => {
                   <CostIcon color="success" sx={{ fontSize: 40 }} />
                   <Box>
                     <Typography variant="body2" color="text.secondary">
-                      Total Cost
+                      费用合计
                     </Typography>
                     <Typography variant="h4">¥{usageData.summary.total_cost.toFixed(6)}</Typography>
                   </Box>
@@ -159,9 +160,9 @@ export const UsagePage: React.FC = () => {
                   <SpeedIcon color="warning" sx={{ fontSize: 40 }} />
                   <Box>
                     <Typography variant="body2" color="text.secondary">
-                      Avg Latency
+                      平均延迟
                     </Typography>
-                    <Typography variant="h4">{usageData.summary.avg_latency_ms}ms</Typography>
+                    <Typography variant="h4">{usageData.summary.avg_latency_ms} ms</Typography>
                   </Box>
                 </CardContent>
               </Card>
@@ -173,16 +174,16 @@ export const UsagePage: React.FC = () => {
               <Card>
                 <CardContent>
                   <Typography variant="h6" gutterBottom>
-                    Usage by Model
+                    按模型统计
                   </Typography>
                   <TableContainer>
                     <Table size="small">
                       <TableHead>
                         <TableRow>
-                          <TableCell>Model</TableCell>
-                          <TableCell align="right">Calls</TableCell>
-                          <TableCell align="right">Tokens</TableCell>
-                          <TableCell align="right">Cost</TableCell>
+                          <TableCell>模型</TableCell>
+                          <TableCell align="right">调用次数</TableCell>
+                          <TableCell align="right">Token 数</TableCell>
+                          <TableCell align="right">费用（元）</TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
@@ -207,16 +208,16 @@ export const UsagePage: React.FC = () => {
               <Card>
                 <CardContent>
                   <Typography variant="h6" gutterBottom>
-                    Daily Trend
+                    按日趋势
                   </Typography>
                   <TableContainer>
                     <Table size="small">
                       <TableHead>
                         <TableRow>
-                          <TableCell>Date</TableCell>
-                          <TableCell align="right">Calls</TableCell>
-                          <TableCell align="right">Tokens</TableCell>
-                          <TableCell align="right">Cost</TableCell>
+                          <TableCell>日期</TableCell>
+                          <TableCell align="right">调用次数</TableCell>
+                          <TableCell align="right">Token 数</TableCell>
+                          <TableCell align="right">费用（元）</TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>

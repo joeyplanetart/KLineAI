@@ -742,7 +742,7 @@ export const StrategyPage: React.FC = () => {
                       <SaveIcon />
                     </IconButton>
                   </Tooltip>
-                  <Chip icon={<QueryStatsIcon />} size="small" label="Python" />
+                  <Chip icon={<QueryStatsIcon />} size="small" label="Python 脚本" />
                 </Box>
               </Box>
               <TextField

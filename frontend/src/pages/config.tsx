@@ -20,6 +20,7 @@ import {
   SmartToy as SmartToyIcon,
 } from '@mui/icons-material';
 import { alpha } from '@mui/material/styles';
+import { PageHeader } from '../components/PageHeader';
 
 const API_URL = 'http://localhost:8000/api/v1';
 
@@ -101,7 +102,7 @@ export const ConfigPage: React.FC = () => {
         setMessage({ type: 'error', text: '保存失败' });
       }
     } catch (err) {
-      setMessage({ type: 'error', text: '保存失败: ' + (err instanceof Error ? err.message : 'Unknown error') });
+      setMessage({ type: 'error', text: '保存失败: ' + (err instanceof Error ? err.message : '未知错误') });
     } finally {
       setSaving(false);
     }
@@ -119,7 +120,6 @@ export const ConfigPage: React.FC = () => {
 
   return (
     <Box>
-
       {message && (
         <Alert severity={message.type} sx={{ mb: 3 }} onClose={() => setMessage(null)}>
           {message.text}
@@ -135,7 +135,7 @@ export const ConfigPage: React.FC = () => {
               AI 模型配置
             </Typography>
           </Box>
-          <Typography variant="body2" color="textSecondary" sx={{ mb: 3 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
             选择 AI 服务提供商和模型。配置变更仅在当前会话生效，永久配置请修改 .env 文件。
           </Typography>
 
@@ -180,7 +180,7 @@ export const ConfigPage: React.FC = () => {
                   ))}
                   {selectedProvider === 'custom' && (
                     <MenuItem value="">
-                      <Typography variant="body2" color="textSecondary">
+                      <Typography variant="body2" color="text.secondary">
                         请在 .env 中配置 CUSTOM_API_URL 和 CUSTOM_MODEL
                       </Typography>
                     </MenuItem>
@@ -249,7 +249,7 @@ export const ConfigPage: React.FC = () => {
                       />
                     </Box>
                     {provider.models.length > 0 && (
-                      <Typography variant="caption" color="textSecondary" sx={{ display: 'block' }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
                         模型: {provider.models.slice(0, 3).join(', ')}
                         {provider.models.length > 3 && '...'}
                       </Typography>

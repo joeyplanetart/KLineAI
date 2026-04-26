@@ -222,7 +222,7 @@ export const DataManagementPage: React.FC = () => {
         fetchStockList();
       }
     } catch (err) {
-      setSyncMessage('同步失败: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      setSyncMessage('同步失败: ' + (err instanceof Error ? err.message : '未知错误'));
     } finally {
       setSyncing(false);
     }
@@ -242,10 +242,10 @@ export const DataManagementPage: React.FC = () => {
         setClearMessage(`已清空 ${result.deleted_count} 条股票数据`);
         fetchStockList();
       } else {
-        setClearMessage('清空失败: ' + (result.detail || 'Unknown error'));
+        setClearMessage('清空失败: ' + (result.detail || '未知错误'));
       }
     } catch (err) {
-      setClearMessage('清空失败: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      setClearMessage('清空失败: ' + (err instanceof Error ? err.message : '未知错误'));
     } finally {
       setClearing(false);
     }
@@ -264,10 +264,10 @@ export const DataManagementPage: React.FC = () => {
         setSnackbar({ open: true, message: `已清空 ${symbol} 的 ${result.deleted_count} 条数据`, severity: 'success' });
         fetchStockList(stockPagination.page, stockSearch, stockExchange);
       } else {
-        setSnackbar({ open: true, message: '清空失败: ' + (result.detail || 'Unknown error'), severity: 'error' });
+        setSnackbar({ open: true, message: '清空失败: ' + (result.detail || '未知错误'), severity: 'error' });
       }
     } catch (err) {
-      setSnackbar({ open: true, message: '清空失败: ' + (err instanceof Error ? err.message : 'Unknown error'), severity: 'error' });
+      setSnackbar({ open: true, message: '清空失败: ' + (err instanceof Error ? err.message : '未知错误'), severity: 'error' });
     } finally {
       setClearingStock(null);
     }
@@ -357,7 +357,7 @@ export const DataManagementPage: React.FC = () => {
         : `Batch fetch completed: ${result.success}/${result.total} successful`;
       setBatchResult({ ...result, message: msg });
     } catch (err) {
-      setBatchResult({ message: '批量获取失败: ' + (err instanceof Error ? err.message : 'Unknown error'), success: 0, failed: 0 });
+      setBatchResult({ message: '批量获取失败: ' + (err instanceof Error ? err.message : '未知错误'), success: 0, failed: 0 });
     } finally {
       setBatchLoading(false);
     }
@@ -408,7 +408,7 @@ export const DataManagementPage: React.FC = () => {
       pollBatchJobStatus(result.job_id);
 
     } catch (err) {
-      setBatchResult({ message: '启动批量采集失败: ' + (err instanceof Error ? err.message : 'Unknown error'), success: 0, failed: 0 });
+      setBatchResult({ message: '启动批量采集失败: ' + (err instanceof Error ? err.message : '未知错误'), success: 0, failed: 0 });
       setBatchLoading(false);
     }
   };
@@ -462,10 +462,10 @@ export const DataManagementPage: React.FC = () => {
         setBatchJobStatus(null);
         setBatchJobId(null);
       } else {
-        setBatchResult({ message: '清除缓存失败: ' + (result.detail || 'Unknown error'), success: 0, failed: 0 });
+        setBatchResult({ message: '清除缓存失败: ' + (result.detail || '未知错误'), success: 0, failed: 0 });
       }
     } catch (err) {
-      setBatchResult({ message: '清除缓存失败: ' + (err instanceof Error ? err.message : 'Unknown error'), success: 0, failed: 0 });
+      setBatchResult({ message: '清除缓存失败: ' + (err instanceof Error ? err.message : '未知错误'), success: 0, failed: 0 });
     } finally {
       setClearingCache(false);
     }
@@ -512,7 +512,7 @@ export const DataManagementPage: React.FC = () => {
         setSnackbar({ open: true, message: result.message || '更新失败', severity: 'error' });
       }
     } catch (err) {
-      setSnackbar({ open: true, message: '更新失败: ' + (err instanceof Error ? err.message : 'Unknown error'), severity: 'error' });
+      setSnackbar({ open: true, message: '更新失败: ' + (err instanceof Error ? err.message : '未知错误'), severity: 'error' });
     }
 
     setEditDialogOpen(false);
@@ -562,7 +562,7 @@ export const DataManagementPage: React.FC = () => {
         setSnackbar({ open: true, message: result.message || '执行失败', severity: 'error' });
       }
     } catch (err) {
-      setSnackbar({ open: true, message: '执行失败: ' + (err instanceof Error ? err.message : 'Unknown error'), severity: 'error' });
+      setSnackbar({ open: true, message: '执行失败: ' + (err instanceof Error ? err.message : '未知错误'), severity: 'error' });
     } finally {
       setExecutingTask(null);
     }
@@ -1064,7 +1064,7 @@ export const DataManagementPage: React.FC = () => {
                       const result = await response.json();
                       setBatchResult({ ...result, message: `采集当天(${tradingDay}): ${result.success}/${result.total} 成功` });
                     } catch (err) {
-                      setBatchResult({ message: '采集失败: ' + (err instanceof Error ? err.message : 'Unknown error'), success: 0, failed: 0 });
+                      setBatchResult({ message: '采集失败: ' + (err instanceof Error ? err.message : '未知错误'), success: 0, failed: 0 });
                     } finally {
                       setBatchLoading(false);
                     }

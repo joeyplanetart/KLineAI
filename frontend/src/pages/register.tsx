@@ -43,7 +43,7 @@ export const RegisterPage: React.FC = () => {
       await register(username, email, password);
       navigate('/');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Registration failed');
+      setError(err instanceof Error ? err.message : '注册失败');
     } finally {
       setLoading(false);
     }

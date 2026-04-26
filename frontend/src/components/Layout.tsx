@@ -53,6 +53,9 @@ const menuItems = [
 ];
 
 function pageTitleForPath(pathname: string): string {
+  if (pathname === '/admin') {
+    return '用户管理';
+  }
   const hit = menuItems.find((item) => item.path === pathname);
   return hit?.text ?? 'KLineAI';
 }
@@ -60,7 +63,6 @@ function pageTitleForPath(pathname: string): string {
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [sidebarAnchorEl, setSidebarAnchorEl] = useState<null | HTMLElement>(null);
   const navigate = useNavigate();
   const location = useLocation();
@@ -73,19 +75,6 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
   const handleCollapseToggle = () => {
     setCollapsed(!collapsed);
-  };
-
-  const handleUserMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleUserMenuClose = () => {
-    setAnchorEl(null);
-  };
-
-  const handleLogout = () => {
-    handleUserMenuClose();
-    logout();
   };
 
   const drawerWidth = collapsed ? COLLAPSED_WIDTH : DRAWER_WIDTH;
@@ -282,7 +271,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             edge="start"
             onClick={handleDrawerToggle}
             sx={{ mr: 1, display: { sm: 'none' }, color: 'text.primary' }}
-            aria-label="open menu"
+            aria-label="打开菜单"
           >
             <MenuIcon />
           </IconButton>

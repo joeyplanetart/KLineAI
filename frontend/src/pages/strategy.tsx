@@ -146,6 +146,46 @@ const calcEma = (values: number[], period: number): Array<number | null> => {
   return result;
 };
 
+const normalizeSignalIndices = (buy: number[], sell: number[]): { buy: number[]; sell: number[] } => {
+  const buySet = new Set(buy);
+  const sellSet = new Set(sell);
+  const allSignalIndices = Array.from(new Set([...buySet, ...sellSet])).sort((a, b) => a - b);
+
+  let hasPosition = false;
+  const normalizedBuy: number[] = [];
+  const normalizedSell: number[] = [];
+
+  for (const idx of allSignalIndices) {
+    const hasBuy = buySet.has(idx);
+    const hasSell = sellSet.has(idx);
+
+    // 同一根K线买卖同时触发时，按持仓状态保留单一信号，避免同时显示 B/S。
+    if (hasBuy && hasSell) {
+      if (hasPosition) {
+        normalizedSell.push(idx);
+        hasPosition = false;
+      } else {
+        normalizedBuy.push(idx);
+        hasPosition = true;
+      }
+      continue;
+    }
+
+    if (hasBuy && !hasPosition) {
+      normalizedBuy.push(idx);
+      hasPosition = true;
+      continue;
+    }
+
+    if (hasSell && hasPosition) {
+      normalizedSell.push(idx);
+      hasPosition = false;
+    }
+  }
+
+  return { buy: normalizedBuy, sell: normalizedSell };
+};
+
 const normalizeSymbol = (code: string): string => (code.startsWith('6') ? `sh${code}` : `sz${code}`);
 
 export const StrategyPage: React.FC = () => {
@@ -199,9 +239,9 @@ export const StrategyPage: React.FC = () => {
         return idx;
       }).filter(idx => idx >= 0);
 
-      return { buy: buyIndices, sell: sellIndices };
+      return normalizeSignalIndices(buyIndices, sellIndices);
     }
-    return indicatorSignals;
+    return normalizeSignalIndices(indicatorSignals.buy, indicatorSignals.sell);
   }, [backtestResults, backtestBuySignals, backtestSellSignals, indicatorSignals, candles]);
 
   const indicatorOptions = useMemo(() => {

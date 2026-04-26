@@ -28,7 +28,6 @@ import {
   Apps as AppsIcon,
   Brightness4 as Brightness4Icon,
   Brightness7 as Brightness7Icon,
-  AccountCircle as AccountCircleIcon,
   Logout as LogoutIcon,
   AdminPanelSettings as AdminIcon,
   Timeline as TimelineIcon,
@@ -62,6 +61,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [sidebarAnchorEl, setSidebarAnchorEl] = useState<null | HTMLElement>(null);
   const navigate = useNavigate();
   const location = useLocation();
   const { mode, toggleTheme } = useThemeMode();
@@ -198,24 +198,69 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         ))}
       </List>
 
-      {isAuthenticated && user && !collapsed && (
+      {isAuthenticated && user && (
         <>
           <Divider />
           <Box sx={{ p: 2 }}>
-            <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 1.5 }}>
-              <Avatar sx={{ width: 36, height: 36, bgcolor: 'primary.main', fontSize: 14 }}>
-                {user.username?.charAt(0).toUpperCase() ?? '?'}
-              </Avatar>
-              <Box sx={{ minWidth: 0 }}>
-                <Typography variant="subtitle2" noWrap>
-                  {user.username}
-                </Typography>
-                <Typography variant="caption" color="text.secondary" noWrap>
-                  {user.role === 'admin' ? '管理员' : '用户'}
-                </Typography>
+            {collapsed ? (
+              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                <Tooltip title={user.username} placement="right">
+                  <IconButton onClick={(e) => setSidebarAnchorEl(e.currentTarget)} size="small">
+                    <Avatar className="MuiAvatar-root MuiAvatar-circular" sx={{ width: 36, height: 36, bgcolor: 'primary.main', fontSize: 14 }}>
+                      {user.username?.charAt(0).toUpperCase() ?? '?'}
+                    </Avatar>
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="退出登录" placement="right">
+                  <IconButton onClick={logout} size="small" sx={{ color: 'text.secondary' }}>
+                    <LogoutIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
               </Box>
-            </Box>
+            ) : (
+              <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 1.5 }}>
+                <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 1.5, cursor: 'pointer', flex: 1, minWidth: 0 }} onClick={(e) => setSidebarAnchorEl(e.currentTarget)}>
+                  <Avatar className="MuiAvatar-root MuiAvatar-circular" sx={{ width: 36, height: 36, bgcolor: 'primary.main', fontSize: 14 }}>
+                    {user.username?.charAt(0).toUpperCase() ?? '?'}
+                  </Avatar>
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography variant="subtitle2" noWrap>
+                      {user.username}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" noWrap>
+                      {user.role === 'admin' ? '管理员' : '用户'}
+                    </Typography>
+                  </Box>
+                </Box>
+                <Tooltip title="退出登录">
+                  <IconButton onClick={logout} size="small" sx={{ color: 'text.secondary' }}>
+                    <LogoutIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              </Box>
+            )}
           </Box>
+          <Menu
+            anchorEl={sidebarAnchorEl}
+            open={Boolean(sidebarAnchorEl)}
+            onClose={() => setSidebarAnchorEl(null)}
+            anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+            transformOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+          >
+            {user.role === 'admin' && (
+              <MenuItem
+                onClick={() => {
+                  setSidebarAnchorEl(null);
+                  navigate('/admin');
+                }}
+              >
+                <ListItemIconBase>
+                  <AdminIcon fontSize="small" />
+                </ListItemIconBase>
+                <ListItemText primary="用户管理" />
+              </MenuItem>
+            )}
+          </Menu>
         </>
       )}
     </Box>
@@ -248,47 +293,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             {mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
           </IconButton>
 
-          {isAuthenticated ? (
-            <>
-              <IconButton onClick={handleUserMenuOpen} size="small" sx={{ color: 'text.secondary' }}>
-                <AccountCircleIcon />
-              </IconButton>
-              <Menu
-                anchorEl={anchorEl}
-                open={Boolean(anchorEl)}
-                onClose={handleUserMenuClose}
-                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-              >
-                <MenuItem disabled>
-                  <ListItemText
-                    primary={user?.username}
-                    secondary={user?.role === 'admin' ? 'Administrator' : 'User'}
-                  />
-                </MenuItem>
-                <Divider />
-                {user?.role === 'admin' && (
-                  <MenuItem
-                    onClick={() => {
-                      handleUserMenuClose();
-                      navigate('/admin');
-                    }}
-                  >
-                    <ListItemIconBase>
-                      <AdminIcon fontSize="small" />
-                    </ListItemIconBase>
-                    <ListItemText primary="管理后台" />
-                  </MenuItem>
-                )}
-                <MenuItem onClick={handleLogout}>
-                  <ListItemIconBase>
-                    <LogoutIcon fontSize="small" />
-                  </ListItemIconBase>
-                  <ListItemText primary="退出登录" />
-                </MenuItem>
-              </Menu>
-            </>
-          ) : (
+          {!isAuthenticated && (
             <Button color="primary" variant="text" onClick={() => navigate('/login')} sx={{ fontWeight: 600 }}>
               登录
             </Button>

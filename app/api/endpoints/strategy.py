@@ -63,8 +63,15 @@ class BacktestResponse(BaseModel):
     sharpe_ratio: float
     max_drawdown: float
     total_trades: int
+    completed_trades: int = 0
+    win_trades: int = 0
+    lose_trades: int = 0
+    win_rate: float = 0
     trades: List[Dict[str, Any]]
     portfolio_values: List[Dict[str, Any]]
+    completed_trade_details: List[Dict[str, Any]] = []
+    buy_signals: List[str] = []  # 改成日期字符串
+    sell_signals: List[str] = []  # 改成日期字符串
 
 class BacktestStatusResponse(BaseModel):
     status: str

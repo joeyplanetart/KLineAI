@@ -13,8 +13,20 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
+  FormControl,
   Grid,
   IconButton,
+  InputLabel,
+  MenuItem,
+  Select,
+  Tab,
+  Tabs,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
   TextField,
   ToggleButton,
   ToggleButtonGroup,
@@ -23,7 +35,8 @@ import {
 } from '@mui/material';
 import {
   AutoFixHigh as AutoFixHighIcon,
-  CandlestickChart as CandlestickChartIcon,
+  History as HistoryIcon,
+  PlayArrow as PlayArrowIcon,
   QueryStats as QueryStatsIcon,
   Save as SaveIcon,
 } from '@mui/icons-material';
@@ -159,6 +172,37 @@ export const StrategyPage: React.FC = () => {
   const [savedIndicators, setSavedIndicators] = useState<SavedIndicator[]>([]);
   const [indicatorSignals, setIndicatorSignals] = useState<{ buy: number[]; sell: number[] }>({ buy: [], sell: [] });
   const [activeIndicator, setActiveIndicator] = useState<string | null>(null);
+  const [activeRightTab, setActiveRightTab] = useState(0);
+
+  // 回测相关状态
+  const [backtestRange, setBacktestRange] = useState('6M');
+  const [backtestCapital, setBacktestCapital] = useState('100000');
+  const [backtestFee, setBacktestFee] = useState('0.02');
+  const [backtestRunning, setBacktestRunning] = useState(false);
+  const [backtestResults, setBacktestResults] = useState<any>(null);
+
+  // 回测信号的买卖点（用于图表标记）- 现在是日期字符串列表
+  const backtestBuySignals = backtestResults?.buy_signals ?? [];
+  const backtestSellSignals = backtestResults?.sell_signals ?? [];
+
+  // 决定使用哪种信号源 - 回测信号基于日期，需要转换成索引
+  const displaySignals = useMemo(() => {
+    if (backtestResults && (backtestBuySignals.length > 0 || backtestSellSignals.length > 0)) {
+      // 将日期信号转换为索引
+      const buyIndices = backtestBuySignals.map((date: string) => {
+        const idx = candles.findIndex(c => c.trade_date === date);
+        return idx;
+      }).filter(idx => idx >= 0);
+
+      const sellIndices = backtestSellSignals.map((date: string) => {
+        const idx = candles.findIndex(c => c.trade_date === date);
+        return idx;
+      }).filter(idx => idx >= 0);
+
+      return { buy: buyIndices, sell: sellIndices };
+    }
+    return indicatorSignals;
+  }, [backtestResults, backtestBuySignals, backtestSellSignals, indicatorSignals, candles]);
 
   const indicatorOptions = useMemo(() => {
     const saved = savedIndicators.map(ind => ({ id: `saved_${ind.id}`, label: ind.name }));
@@ -440,11 +484,57 @@ export const StrategyPage: React.FC = () => {
     }
   };
 
+  const handleRunBacktest = async () => {
+    if (!selectedSymbol || candles.length === 0) {
+      setGlobalError('请先选择股票标的并加载数据');
+      return;
+    }
+    setBacktestRunning(true);
+    setGlobalError(null);
+    try {
+      const symbol = normalizeSymbol(selectedSymbol.code);
+      // 根据 range 计算日期范围
+      const now = new Date();
+      let startDate: string;
+      const rangeValue = parseInt(backtestRange);
+      if (backtestRange.endsWith('M')) {
+        startDate = new Date(now.setMonth(now.getMonth() - rangeValue)).toISOString().split('T')[0];
+      } else if (backtestRange.endsWith('Y')) {
+        startDate = new Date(now.setFullYear(now.getFullYear() - rangeValue)).toISOString().split('T')[0];
+      } else {
+        startDate = '';
+      }
+      const endDate = new Date().toISOString().split('T')[0];
+
+      const strategyCode = (activeIndicator && !activeIndicator.endsWith('_pending')) ? editorCode : 'default_ma_cross';
+
+      const response = await fetch(`${API_URL}/strategy/backtest`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          symbol,
+          strategy_code: strategyCode,
+          start_date: startDate || undefined,
+          end_date: endDate,
+          initial_capital: parseFloat(backtestCapital),
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.detail || '回测失败');
+      }
+      setBacktestResults(data);
+    } catch (error) {
+      setGlobalError(error instanceof Error ? error.message : '回测失败');
+    } finally {
+      setBacktestRunning(false);
+    }
+  };
+
   const chartOption = useMemo(() => {
     const dates = candles.map((item) => item.trade_date);
     const closeValues = candles.map((item) => item.close);
     const klineData = candles.map((item) => [item.open, item.close, item.low, item.high]);
-    const volumeData = candles.map((item) => item.volume);
     const candleMap = new Map(candles.map((item) => [item.trade_date, item]));
 
     const ma5 = rollingAverage(closeValues, 5);
@@ -543,17 +633,17 @@ export const StrategyPage: React.FC = () => {
             borderColor: '#f44336',
             borderColor0: '#26a69a',
           },
-          markPoint: activeIndicator ? {
+          markPoint: displaySignals && (displaySignals.buy.length > 0 || displaySignals.sell.length > 0) ? {
             symbol: 'circle',
             symbolSize: 8,
             data: [
-              ...indicatorSignals.buy.map(idx => ({
+              ...displaySignals.buy.map(idx => ({
                 coord: [idx, klineData[idx] ? (klineData[idx][2] as number) - 0.5 : (closeValues[idx] as number) - 0.5],
                 value: 'B',
                 itemStyle: { color: '#f44336', fontSize: 12, fontWeight: 'bold' },
                 label: { show: true, position: 'bottom', formatter: 'B', color: '#f44336', fontSize: 12, fontWeight: 'bold' },
               })),
-              ...indicatorSignals.sell.map(idx => ({
+              ...displaySignals.sell.map(idx => ({
                 coord: [idx, klineData[idx] ? (klineData[idx][3] as number) + 0.5 : (closeValues[idx] as number) + 0.5],
                 value: 'S',
                 itemStyle: { color: '#26a69a', fontSize: 12, fontWeight: 'bold' },
@@ -578,7 +668,7 @@ export const StrategyPage: React.FC = () => {
         },
       ],
     };
-  }, [candles, selectedIndicators, indicatorSignals, activeIndicator]);
+  }, [candles, selectedIndicators, indicatorSignals, activeIndicator, backtestBuySignals, backtestSellSignals, backtestResults, displaySignals]);
 
   return (
     <Box>
@@ -677,7 +767,7 @@ export const StrategyPage: React.FC = () => {
           <Card sx={{ mb: 2 }}>
             <CardContent>
               <Typography variant="h6" sx={{ mb: 1, fontWeight: 600 }}>
-                图表与交易
+                图表与回测
               </Typography>
               <Grid container spacing={1.5} sx={{ mb: 1.5 }}>
                 <Grid size={{ xs: 12, md: 3 }}>
@@ -766,49 +856,232 @@ export const StrategyPage: React.FC = () => {
 
               <Divider sx={{ mb: 1.5 }} />
 
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                <CandlestickChartIcon color="primary" />
-                <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                  图表窗口（K线 + 指标）
-                </Typography>
-              </Box>
+              <Tabs value={activeRightTab} onChange={(_, v) => setActiveRightTab(v)} sx={{ mb: 1 }}>
+                <Tab label="图表窗口" />
+                <Tab label="回测结果" />
+              </Tabs>
 
-              <Box sx={{ minHeight: 520, position: 'relative' }}>
-                {chartLoading && (
-                  <Box
-                    sx={{
-                      position: 'absolute',
-                      inset: 0,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      zIndex: 1,
-                      bgcolor: 'rgba(255, 255, 255, 0.55)',
-                    }}
-                  >
-                    <CircularProgress />
+              {activeRightTab === 1 && (
+                <Box>
+                  {/* 回测参数区域 */}
+                  <Card variant="outlined" sx={{ mb: 2, bgcolor: '#f8fafc' }}>
+                    <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5 }}>回测参数</Typography>
+                      <Grid container spacing={2} sx={{ alignItems: 'center' }}>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                          <FormControl size="small" fullWidth>
+                            <InputLabel>日期范围</InputLabel>
+                            <Select value={backtestRange} label="日期范围" onChange={(e) => setBacktestRange(e.target.value)}>
+                              <MenuItem value="1M">1个月</MenuItem>
+                              <MenuItem value="3M">3个月</MenuItem>
+                              <MenuItem value="6M">6个月</MenuItem>
+                              <MenuItem value="1Y">1年</MenuItem>
+                              <MenuItem value="2Y">2年</MenuItem>
+                              <MenuItem value="3Y">3年</MenuItem>
+                            </Select>
+                          </FormControl>
+                        </Grid>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                          <TextField size="small" label="初始资金" value={backtestCapital} onChange={(e) => setBacktestCapital(e.target.value)} fullWidth />
+                        </Grid>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                          <TextField size="small" label="手续费(%)" value={backtestFee} onChange={(e) => setBacktestFee(e.target.value)} fullWidth />
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 3 }}>
+                          <Box sx={{ display: 'flex', gap: 1 }}>
+                            <Tooltip title="运行回测">
+                              <Button variant="contained" startIcon={backtestRunning ? <CircularProgress size={16} color="inherit" /> : <PlayArrowIcon />} onClick={handleRunBacktest} disabled={backtestRunning || !selectedSymbol} size="small" sx={{ minWidth: 0, px: 1.5 }} />
+                            </Tooltip>
+                            <Tooltip title="历史记录">
+                              <Button variant="outlined" startIcon={<HistoryIcon />} size="small" sx={{ minWidth: 0, px: 1.5 }} />
+                            </Tooltip>
+                          </Box>
+                        </Grid>
+                      </Grid>
+                    </CardContent>
+                  </Card>
+
+                  {/* 回测结果区域 */}
+                  <Box sx={{ minHeight: 400 }}>
+                    {backtestResults ? (
+                      <Grid container spacing={2}>
+                        <Grid size={{ xs: 12 }}>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>回测结果</Typography>
+                        </Grid>
+                        {/* 收益统计卡片 */}
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                          <Card sx={{ bgcolor: backtestResults.total_return >= 0 ? '#fff3e0' : '#e3f2fd', border: '1px solid', borderColor: backtestResults.total_return >= 0 ? '#ff9800' : '#2196f3' }}>
+                            <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+                              <Typography variant="caption" color="text.secondary">总收益率</Typography>
+                              <Typography variant="h6" sx={{ fontWeight: 700, color: backtestResults.total_return >= 0 ? '#e65100' : '#1565c0' }}>
+                                {backtestResults.total_return?.toFixed(2) ?? '0.00'}%
+                              </Typography>
+                            </CardContent>
+                          </Card>
+                        </Grid>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                          <Card sx={{ bgcolor: '#f5f5f5' }}>
+                            <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+                              <Typography variant="caption" color="text.secondary">最终资金</Typography>
+                              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                                ¥{(backtestResults.final_value ?? 0).toLocaleString('zh-CN', { minimumFractionDigits: 2 })}
+                              </Typography>
+                            </CardContent>
+                          </Card>
+                        </Grid>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                          <Card sx={{ bgcolor: '#ffebee' }}>
+                            <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+                              <Typography variant="caption" color="text.secondary">最大回撤</Typography>
+                              <Typography variant="h6" sx={{ fontWeight: 700, color: '#2e7d32' }}>
+                                {(backtestResults.max_drawdown ?? 0).toFixed(2)}%
+                              </Typography>
+                            </CardContent>
+                          </Card>
+                        </Grid>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                          <Card sx={{ bgcolor: '#f5f5f5' }}>
+                            <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+                              <Typography variant="caption" color="text.secondary">夏普比率</Typography>
+                              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                                {backtestResults.sharpe_ratio ?? '0.00'}
+                              </Typography>
+                            </CardContent>
+                          </Card>
+                        </Grid>
+                        {/* 交易统计 */}
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                          <Card sx={{ bgcolor: '#f5f5f5' }}>
+                            <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+                              <Typography variant="caption" color="text.secondary">买入次数</Typography>
+                              <Typography variant="h6" sx={{ fontWeight: 700 }}>{backtestResults.total_trades ?? 0}</Typography>
+                            </CardContent>
+                          </Card>
+                        </Grid>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                          <Card sx={{ bgcolor: '#e8f5e9' }}>
+                            <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+                              <Typography variant="caption" color="text.secondary">盈利次数</Typography>
+                              <Typography variant="h6" sx={{ fontWeight: 700, color: '#d32f2f' }}>{backtestResults.win_trades ?? 0}</Typography>
+                            </CardContent>
+                          </Card>
+                        </Grid>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                          <Card sx={{ bgcolor: '#ffebee' }}>
+                            <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+                              <Typography variant="caption" color="text.secondary">亏损次数</Typography>
+                              <Typography variant="h6" sx={{ fontWeight: 700, color: '#2e7d32' }}>{backtestResults.lose_trades ?? 0}</Typography>
+                            </CardContent>
+                          </Card>
+                        </Grid>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                          <Card sx={{ bgcolor: '#f5f5f5' }}>
+                            <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+                              <Typography variant="caption" color="text.secondary">胜率</Typography>
+                              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                                {(backtestResults.win_rate ?? 0).toFixed(1)}%
+                              </Typography>
+                            </CardContent>
+                          </Card>
+                        </Grid>
+                        {/* 交易记录表格 - 显示完整交易对 */}
+                        <Grid size={{ xs: 12 }}>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>交易记录 (共{(backtestResults.completed_trade_details?.length ?? 0)}笔完整交易)</Typography>
+                          <TableContainer component={Card}>
+                            <Table size="small">
+                              <TableHead>
+                                <TableRow sx={{ bgcolor: '#f5f5f5' }}>
+                                  <TableCell>序号</TableCell>
+                                  <TableCell>买入日期</TableCell>
+                                  <TableCell>买入价格</TableCell>
+                                  <TableCell>卖出日期</TableCell>
+                                  <TableCell>卖出价格</TableCell>
+                                  <TableCell align="right">数量</TableCell>
+                                  <TableCell align="right">盈亏金额</TableCell>
+                                  <TableCell align="right">收益率</TableCell>
+                                </TableRow>
+                              </TableHead>
+                              <TableBody>
+                                {(backtestResults.completed_trade_details ?? []).map((trade: any, idx: number) => {
+                                  const buyAmount = trade.buy_price * trade.shares;
+                                  const profitRate = (trade.profit / buyAmount) * 100;
+                                  return (
+                                    <TableRow key={idx} hover>
+                                      <TableCell>{idx + 1}</TableCell>
+                                      <TableCell>{trade.buy_date}</TableCell>
+                                      <TableCell>¥{trade.buy_price?.toFixed(2)}</TableCell>
+                                      <TableCell>{trade.sell_date}</TableCell>
+                                      <TableCell>¥{trade.sell_price?.toFixed(2)}</TableCell>
+                                      <TableCell align="right">{trade.shares}</TableCell>
+                                      <TableCell align="right" sx={{ color: trade.profit >= 0 ? '#d32f2f' : '#2e7d32', fontWeight: 600 }}>
+                                        {trade.profit >= 0 ? '+' : ''}¥{trade.profit?.toFixed(2)}
+                                      </TableCell>
+                                      <TableCell align="right" sx={{ color: profitRate >= 0 ? '#d32f2f' : '#2e7d32', fontWeight: 600 }}>
+                                        {profitRate >= 0 ? '+' : ''}{profitRate.toFixed(2)}%
+                                      </TableCell>
+                                    </TableRow>
+                                  );
+                                })}
+                                {(!backtestResults.completed_trade_details || backtestResults.completed_trade_details.length === 0) && (
+                                  <TableRow>
+                                    <TableCell colSpan={8} align="center">
+                                      <Typography color="text.secondary" sx={{ py: 2 }}>暂无完整交易记录</Typography>
+                                    </TableCell>
+                                  </TableRow>
+                                )}
+                              </TableBody>
+                            </Table>
+                          </TableContainer>
+                        </Grid>
+                      </Grid>
+                    ) : (
+                      <Box sx={{ minHeight: 400, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+                        <QueryStatsIcon sx={{ fontSize: 48, color: '#bdbdbd' }} />
+                        <Typography color="text.secondary">请设置回测参数并点击"运行回测"</Typography>
+                      </Box>
+                    )}
                   </Box>
-                )}
-                {candles.length > 0 ? (
-                  <ReactECharts option={chartOption} style={{ height: 520 }} notMerge />
-                ) : (
-                  <Box
-                    sx={{
-                      minHeight: 520,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 1,
-                    }}
-                  >
-                    <Typography color="text.secondary">暂无K线数据</Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      请先通过搜索框选择有历史行情的股票标的
-                    </Typography>
-                  </Box>
-                )}
-              </Box>
+                </Box>
+              )}
+
+              {activeRightTab === 0 && (
+                <Box sx={{ minHeight: 520, position: 'relative' }}>
+                  {chartLoading && (
+                    <Box
+                      sx={{
+                        position: 'absolute',
+                        inset: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 1,
+                        bgcolor: 'rgba(255, 255, 255, 0.55)',
+                      }}
+                    >
+                      <CircularProgress />
+                    </Box>
+                  )}
+                  {candles.length > 0 ? (
+                    <ReactECharts option={chartOption} style={{ height: 520 }} notMerge />
+                  ) : (
+                    <Box
+                      sx={{
+                        minHeight: 520,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 1,
+                      }}
+                    >
+                      <Typography color="text.secondary">暂无K线数据</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        请先通过搜索框选择有历史行情的股票标的
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
+              )}
             </CardContent>
           </Card>
         </Grid>

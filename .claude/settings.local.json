@@ -78,7 +78,9 @@
       "mcp__plugin_chrome-devtools-mcp_chrome-devtools__wait_for",
       "mcp__plugin_chrome-devtools-mcp_chrome-devtools__list_console_messages",
       "Bash(docker exec *)",
-      "mcp__plugin_chrome-devtools-mcp_chrome-devtools__take_screenshot"
+      "mcp__plugin_chrome-devtools-mcp_chrome-devtools__take_screenshot",
+      "Bash(docker-compose restart *)",
+      "Bash(awk '{print $2}')"
     ]
   }
 }

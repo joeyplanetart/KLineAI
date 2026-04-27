@@ -31,10 +31,9 @@ CREATE INDEX IF NOT EXISTS idx_model_usage_user_id ON model_usage(user_id);
 CREATE INDEX IF NOT EXISTS idx_model_usage_model ON model_usage(model);
 CREATE INDEX IF NOT EXISTS idx_model_usage_created_at ON model_usage(created_at);
 
--- Default admin user: joey01265235@163.com / Zy123456
-INSERT INTO users (username, email, hashed_password, role)
-VALUES ('admin', 'joey01265235@163.com', '$2b$12$lcwift8UPSUR9pCDx/JQ4OMlJia6UEy1nCE/2IOcsdWrvbvUkrdjq', 'admin')
-ON CONFLICT (username) DO UPDATE SET role = 'admin', hashed_password = '$2b$12$lcwift8UPSUR9pCDx/JQ4OMlJia6UEy1nCE/2IOcsdWrvbvUkrdjq';
+-- Production note:
+-- Do not create default admin users with hardcoded credentials.
+-- Create the initial admin manually after deployment.
 
 -- Other initial schema setups can go here.
 -- For now, we will manage schema migrations via SQLAlchemy/Alembic in the backend.

@@ -23,8 +23,7 @@ import {
 } from '@mui/icons-material';
 import ReactECharts from 'echarts-for-react';
 import { alpha, useTheme } from '@mui/material/styles';
-
-const API_URL = 'http://localhost:8000/api/v1';
+import { API_URL } from '../config/api';
 
 interface StockOption {
   code: string;

@@ -36,8 +36,7 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 import { PageHeader } from '../components/PageHeader';
-
-const API_URL = 'http://localhost:8000/api/v1';
+import { API_URL } from '../config/api';
 
 interface User {
   id: number;

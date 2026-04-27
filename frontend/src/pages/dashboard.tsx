@@ -8,8 +8,7 @@ import {
 } from '@mui/icons-material';
 import { alpha } from '@mui/material/styles';
 import { AnalysisPanel } from '../components/AnalysisPanel';
-
-const API_URL = 'http://localhost:8000/api/v1';
+import { API_URL } from '../config/api';
 
 /** 用于首页「今日收益」示例统计的默认指数 */
 const DEFAULT_SYMBOL = 'sh000001';

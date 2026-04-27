@@ -52,8 +52,7 @@ import {
   Search as SearchIcon,
   Delete as DeleteIcon,
 } from '@mui/icons-material';
-
-const API_URL = 'http://localhost:8000/api/v1';
+import { API_URL } from '../config/api';
 
 interface TabPanelProps {
   children?: React.ReactNode;

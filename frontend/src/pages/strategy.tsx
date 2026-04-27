@@ -42,8 +42,7 @@ import {
   Save as SaveIcon,
 } from '@mui/icons-material';
 import ReactECharts from 'echarts-for-react';
-
-const API_URL = 'http://localhost:8000/api/v1';
+import { API_URL } from '../config/api';
 
 const DEFAULT_CODE = `my_indicator_name = "示例：布林带触发"
 my_indicator_description = "简单布林带策略信号"

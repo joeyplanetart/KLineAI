@@ -20,9 +20,7 @@ import {
   SmartToy as SmartToyIcon,
 } from '@mui/icons-material';
 import { alpha } from '@mui/material/styles';
-import { PageHeader } from '../components/PageHeader';
-
-const API_URL = 'http://localhost:8000/api/v1';
+import { API_URL } from '../config/api';
 
 interface LLMProvider {
   id: string;

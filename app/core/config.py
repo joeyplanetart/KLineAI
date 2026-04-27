@@ -1,14 +1,15 @@
 from pydantic_settings import BaseSettings
-from datetime import timedelta
-import os
+from typing import List
 from dotenv import load_dotenv
 
 # Load .env file explicitly
 load_dotenv()
 
+
 class Settings(BaseSettings):
     PROJECT_NAME: str = "KLineAI Quantitative Trading System"
     API_V1_STR: str = "/api/v1"
+    ENVIRONMENT: str = "development"
 
     POSTGRES_SERVER: str = "localhost"
     POSTGRES_USER: str = "klineai_user"
@@ -19,7 +20,8 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
 
     # LLM multi-provider configuration
-    LLM_PROVIDER: str = ""  # openrouter|openai|google|deepseek|grok|custom|minimax
+    # openrouter|openai|google|deepseek|grok|custom|minimax
+    LLM_PROVIDER: str = ""
     OPENAI_API_KEY: str = ""
     MINIMAX_API_KEY: str = ""
     MINIMAX_BASE_URL: str = "https://api.minimaxi.com/v1"
@@ -56,12 +58,38 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "klineai-super-secret-key-change-in-production"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    CORS_ORIGINS: str = "http://localhost:5173"
 
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:
-        return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+        return (
+            f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
+            f"@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+        )
+
+    @property
+    def cors_origins(self) -> List[str]:
+        return [
+            origin.strip()
+            for origin in self.CORS_ORIGINS.split(",")
+            if origin.strip()
+        ]
+
+    def validate_production_settings(self) -> None:
+        if self.ENVIRONMENT.lower() != "production":
+            return
+        if self.SECRET_KEY == "klineai-super-secret-key-change-in-production":
+            raise ValueError(
+                "SECRET_KEY must be set in production environment"
+            )
+        if not self.cors_origins:
+            raise ValueError(
+                "CORS_ORIGINS must be configured in production environment"
+            )
 
     class Config:
         case_sensitive = True
 
+
 settings = Settings()
+settings.validate_production_settings()

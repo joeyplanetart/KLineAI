@@ -10,8 +10,7 @@ import {
   TrendingUp as TrendingUpIcon,
   TrendingDown as TrendingDownIcon,
 } from '@mui/icons-material';
-
-const API_URL = 'http://localhost:8000/api/v1';
+import { API_URL } from '../config/api';
 
 interface IndexOverviewItem {
   symbol: string;
